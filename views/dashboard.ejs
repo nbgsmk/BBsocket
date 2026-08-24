@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/stylesheets/style.css" />
+    <style>
+      main { max-width: 760px; margin: 3rem auto; padding: 0 1rem; }
+      button { cursor: pointer; margin: 0 .5rem .5rem 0; padding: .6rem 1rem; }
+      pre { background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; min-height: 8rem; overflow: auto; padding: 1rem; }
+      #live-response { max-height: 26rem; white-space: pre; }
+      #message { color: #a00; min-height: 1.5rem; }
+      .live-heading { align-items: center; display: flex; gap: .75rem; }
+      .format-toggle { align-items: center; display: inline-flex; font-size: .9rem; font-weight: normal; gap: .35rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1><%= title %></h1>
+      <p>Control the Binance Coin-M WebSocket connection.</p>
+      <button type="button" data-action="connect">Connect</button>
+      <button type="button" data-action="disconnect">Disconnect</button>
+      <button type="button" data-action="status">Status</button>
+      <button type="button" id="live-toggle">Enable live data</button>
+      <p id="message" role="alert"></p>
+      <pre id="response" aria-live="polite">Click a button to see the JSON response.</pre>
+      <div class="live-heading">
+        <h2>Live streaming socket data</h2>
+        <label class="format-toggle">
+          <input type="checkbox" id="format-toggle" />
+          Single-line JSON
+        </label>
+      </div>
+      <pre id="live-response" aria-live="polite">Live data is disabled.</pre>
+    </main>
+    <script>
+      const response = document.getElementById('response');
+      const liveResponse = document.getElementById('live-response');
+      const liveToggle = document.getElementById('live-toggle');
+      const formatToggle = document.getElementById('format-toggle');
+      const message = document.getElementById('message');
+      let liveSource = null;
+      const liveHistory = [];
+      const maxLiveEntries = 300;
+
+      function renderLiveData() {
+        if (!liveHistory.length) return;
+        liveResponse.textContent = liveHistory.map(entry => formatToggle.checked
+          ? JSON.stringify(entry.parsed)
+          : entry.raw).join('\n');
+        liveResponse.scrollTop = liveResponse.scrollHeight;
+      }
+
+      async function callService(action) {
+        message.textContent = '';
+        response.textContent = 'Loading...';
+        try {
+          const result = await fetch('/binancesocket/' + action);
+          const body = await result.json();
+          if (!result.ok) throw new Error(body.error || 'Request failed');
+          response.textContent = JSON.stringify(body, null, 2);
+        } catch (error) {
+          response.textContent = '';
+          message.textContent = error.message;
+        }
+      }
+
+      document.querySelectorAll('[data-action]').forEach(button => {
+        button.addEventListener('click', () => callService(button.dataset.action));
+      });
+
+      liveToggle.addEventListener('click', () => {
+        if (liveSource) {
+          liveSource.close();
+          liveSource = null;
+          liveToggle.textContent = 'Enable live data';
+          liveResponse.textContent = 'Live data is disabled.';
+          return;
+        }
+
+        liveResponse.textContent = 'Waiting for socket data...';
+        liveSource = new EventSource('/binancesocket/live');
+        liveSource.onmessage = event => {
+          try {
+            liveHistory.push({ raw: event.data, parsed: JSON.parse(event.data) });
+          } catch (_) {
+            liveHistory.push({ raw: event.data, parsed: event.data });
+          }
+          while (liveHistory.length > maxLiveEntries) liveHistory.shift();
+          renderLiveData();
+        };
+        liveSource.onerror = () => {
+          if (liveSource) {
+            liveSource.close();
+          liveSource = null;
+          liveToggle.textContent = 'Enable live data';
+          liveResponse.textContent = 'Live data connection lost.';
+        }
+      };
+        liveToggle.textContent = 'Disable live data';
+      });
+
+      formatToggle.addEventListener('change', renderLiveData);
+    </script>
+  </body>
+</html>
