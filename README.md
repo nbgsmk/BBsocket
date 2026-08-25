@@ -2,6 +2,25 @@
 
 This is a node.js Express application that connects to Binance Coin-M Futures continuous-contract WebSocket streams (1 second update), keeps closed candlesticks in memory, and exposes them through HTTP and a browser dashboard.
 
+## Current project status
+
+The implementation is complete. The remaining task is to run the automated tests in the local WebStorm environment and resolve any test-only issues that appear.
+
+- Service, configuration, APIs, dashboard, live SSE feed, JSON formatting toggle, and documentation are implemented.
+- Unit/API/SSE/dashboard contract tests are present under `test/`.
+- The optional Playwright browser test requires Chromium to be installed.
+- WebStorm’s bundled Node runtime can be used if `node` is not available on the terminal `PATH`.
+
+Run verification from WebStorm’s terminal:
+
+```bash
+npm test
+npx playwright install chromium
+npm run test:browser
+```
+
+The browser test expects the application to be running at `http://127.0.0.1:3000`.
+
 ## Features
 
 - Binance Coin-M continuous-contract kline streams (1 second update).
@@ -41,7 +60,9 @@ PORT=8080 npm start
 
 ## Configuration
 
-Configuration is stored in [config/binancesocket.json](config/binancesocket.json):
+- ( Check the original Binance documentation for the [continuous-contract kline stream](https://binance-docs.github.io/apidocs/spot/en/#continuous-contract-kline-candlestick-streams) )
+
+Configuration of this server is stored in [config/binancesocket.json](config/binancesocket.json):
 
 ```json
 {
@@ -78,6 +99,24 @@ wss://dstream.binance.com/ws/btcusd_perpetual@continuousKline_1m
 `historyLength` is measured in minutes, not candle count. For example, with a `5m` interval and a history length of `1000`, candles from approximately the last 1000 minutes are retained.
 
 The `connected` value is changed automatically by the connect and disconnect endpoints. Do not edit it while the application is running unless you understand that the next service action may overwrite the value.
+
+### Server configuration
+
+The HTTP listener configuration is stored separately in [config/server.json](config/server.json):
+
+```json
+{
+  "serverListenPort": 3000
+}
+```
+
+The `PORT` environment variable takes precedence over `serverListenPort`, which is useful for deployment platforms:
+
+```bash
+PORT=8080 npm start
+```
+
+Useful server settings that could be added later include `serverListenHost` (binding address), request/body size limits, CORS policy, access-log level, rate limits, and graceful-shutdown timeout. Authentication or an API key for the connection-control endpoints should be added before exposing the service beyond a trusted local network.
 
 ## HTTP API
 
