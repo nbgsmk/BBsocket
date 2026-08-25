@@ -6,8 +6,8 @@ const WebSocket = require('ws');
 const CONFIG_PATH = path.join(__dirname, '..', 'config', 'binancesocket.json');
 const INTERVALS = new Set(['1s', '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M']);
 
-function readConfig() {
-  const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+function readConfig(configPath = CONFIG_PATH) {
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   if (!/^[A-Z0-9]+_(PERPETUAL|CURRENT_QUARTER|NEXT_QUARTER)$/.test(config.tickerSymbol)) {
     throw new Error('tickerSymbol must be a Coin-M continuous contract, e.g. BTCUSD_PERPETUAL');
   }
@@ -21,10 +21,10 @@ function readConfig() {
   return config;
 }
 
-function writeConfig(config) {
-  const temporaryPath = CONFIG_PATH + '.tmp';
+function writeConfig(config, configPath = CONFIG_PATH) {
+  const temporaryPath = configPath + '.tmp';
   fs.writeFileSync(temporaryPath, JSON.stringify(config, null, 2) + '\n');
-  fs.renameSync(temporaryPath, CONFIG_PATH);
+  fs.renameSync(temporaryPath, configPath);
 }
 
 function symbolForStream(tickerSymbol) {
@@ -38,7 +38,8 @@ function publicSymbol(tickerSymbol) {
 class BinanceSocket extends EventEmitter {
   constructor(options = {}) {
     super();
-    this.config = readConfig();
+    this.configPath = options.configPath || CONFIG_PATH;
+    this.config = readConfig(this.configPath);
     this.WebSocket = options.WebSocket || WebSocket;
     this.socket = null;
     this.history = [];
@@ -55,9 +56,9 @@ class BinanceSocket extends EventEmitter {
     if (this.socket && (this.socket.readyState === this.WebSocket.OPEN || this.socket.readyState === this.WebSocket.CONNECTING)) {
       return;
     }
-    this.config = readConfig();
+    this.config = readConfig(this.configPath);
     this.config.connected = true;
-    writeConfig(this.config);
+    writeConfig(this.config, this.configPath);
     this.openSocket();
   }
 
@@ -84,9 +85,9 @@ class BinanceSocket extends EventEmitter {
   }
 
   disconnect() {
-    this.config = readConfig();
+    this.config = readConfig(this.configPath);
     this.config.connected = false;
-    writeConfig(this.config);
+    writeConfig(this.config, this.configPath);
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -135,6 +136,7 @@ class BinanceSocket extends EventEmitter {
       connected: this.config.connected,
       socketOpen: Boolean(this.socket && this.socket.readyState === this.WebSocket.OPEN),
       tickerSymbol: this.config.tickerSymbol,
+      webSocketUrl: this.streamUrl(),
       interval: this.config.interval,
       historyLength: this.config.historyLength,
       candles: this.history.length
