@@ -116,7 +116,7 @@ The `PORT` environment variable takes precedence over `serverListenPort`, which 
 PORT=8080 npm start
 ```
 
-Useful server settings that could be added later include `serverListenHost` (binding address), request/body size limits, CORS policy, access-log level, rate limits, and graceful-shutdown timeout. Authentication or an API key for the connection-control endpoints should be added before exposing the service beyond a trusted local network.
+`serverListenPort` is the only server configuration parameter currently implemented. For local development, the default value of `3000` is sufficient.
 
 ## HTTP API
 
@@ -286,3 +286,17 @@ Use an uppercase continuous-contract name such as `BTCUSD_PERPETUAL`, a positive
 The connect and disconnect endpoints currently have no authentication. Keep the service bound to a trusted local network or add authentication before exposing it publicly.
 
 The candle history is process-local and is not suitable as durable storage. Use a database or time-series store if data must survive restarts or support long-term queries.
+
+## Potential future server features
+
+The following settings could be added to `config/server.json` if the application needs more deployment or security controls:
+
+- `serverListenHost`: Network interface to bind to. Use `127.0.0.1` for local-only access or `0.0.0.0` to accept connections from other interfaces.
+- `requestBodyLimit`: Maximum accepted JSON/request body size, for example `"100kb"`. This helps prevent oversized requests.
+- `corsOrigins`: List of browser origins allowed to call the API. This should be restricted to trusted dashboard or client origins.
+- `accessLogLevel`: HTTP logging verbosity, such as `"dev"` for development or `"combined"` for more detailed deployment logs.
+- `rateLimit`: Request limits for clients within a time window. This helps protect the API from accidental or malicious request floods.
+- `shutdownTimeout`: Maximum time to wait for active HTTP and WebSocket work to finish during graceful shutdown.
+- `apiKey`: Credential required for connection-control and status endpoints before exposing the service beyond a trusted local network.
+
+These parameters are documentation only and are not currently read by the application.
