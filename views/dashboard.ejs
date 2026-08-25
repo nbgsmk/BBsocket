@@ -19,6 +19,7 @@
     <main>
       <h1><%= title %></h1>
       <p>Control the Binance Coin-M WebSocket connection.</p>
+      <p><strong>WebSocket URL:</strong> <code id="websocket-url">Loading...</code></p>
       <button type="button" data-action="connect">Connect</button>
       <button type="button" data-action="disconnect">Disconnect</button>
       <button type="button" data-action="status">Status</button>
@@ -28,8 +29,8 @@
       <div class="live-heading">
         <h2>Live streaming socket data</h2>
         <label class="format-toggle">
-          <input type="checkbox" id="format-toggle" />
-          Single-line JSON
+          <input type="checkbox" id="format-toggle" checked />
+          <span id="format-label">Single-line JSON</span>
         </label>
       </div>
       <pre id="live-response" aria-live="polite">Live data is disabled.</pre>
@@ -39,6 +40,8 @@
       const liveResponse = document.getElementById('live-response');
       const liveToggle = document.getElementById('live-toggle');
       const formatToggle = document.getElementById('format-toggle');
+      const websocketUrl = document.getElementById('websocket-url');
+      const formatLabel = document.getElementById('format-label');
       const message = document.getElementById('message');
       let liveSource = null;
       const liveHistory = [];
@@ -48,7 +51,7 @@
         if (!liveHistory.length) return;
         liveResponse.textContent = liveHistory.map(entry => formatToggle.checked
           ? JSON.stringify(entry.parsed)
-          : entry.raw).join('\n');
+          : (typeof entry.parsed === 'string' ? entry.raw : JSON.stringify(entry.parsed, null, 2))).join('\n');
         liveResponse.scrollTop = liveResponse.scrollHeight;
       }
 
@@ -59,6 +62,7 @@
           const result = await fetch('/binancesocket/' + action);
           const body = await result.json();
           if (!result.ok) throw new Error(body.error || 'Request failed');
+          if (body.webSocketUrl) websocketUrl.textContent = body.webSocketUrl;
           response.textContent = JSON.stringify(body, null, 2);
         } catch (error) {
           response.textContent = '';
@@ -69,6 +73,8 @@
       document.querySelectorAll('[data-action]').forEach(button => {
         button.addEventListener('click', () => callService(button.dataset.action));
       });
+
+      callService('status');
 
       liveToggle.addEventListener('click', () => {
         if (liveSource) {
@@ -101,7 +107,10 @@
         liveToggle.textContent = 'Disable live data';
       });
 
-      formatToggle.addEventListener('change', renderLiveData);
+      formatToggle.addEventListener('change', () => {
+        formatLabel.textContent = formatToggle.checked ? 'Single-line JSON' : 'Formatted JSON';
+        renderLiveData();
+      });
     </script>
   </body>
 </html>
