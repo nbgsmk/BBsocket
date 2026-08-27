@@ -11,11 +11,11 @@ function readConfig(configPath = CONFIG_PATH) {
   if (!/^[A-Z0-9]+_(PERPETUAL|CURRENT_QUARTER|NEXT_QUARTER)$/.test(config.tickerSymbol)) {
     throw new Error('tickerSymbol must be a Coin-M continuous contract, e.g. BTCUSD_PERPETUAL');
   }
-  if (!Number.isInteger(config.historyLength) || config.historyLength < 1) {
-    throw new Error('historyLength must be a positive integer');
+  if (!Number.isInteger(config.historyCandles) || config.historyCandles < 1) {
+    throw new Error('historyCandles must be a positive integer');
   }
-  if (!INTERVALS.has(config.interval)) {
-    throw new Error('Unsupported Binance interval: ' + config.interval);
+  if (!INTERVALS.has(config.candleInterval)) {
+    throw new Error('Unsupported Binance interval: ' + config.candleInterval);
   }
   config.connected = config.connected === true;
   return config;
@@ -48,7 +48,7 @@ class BinanceSocket extends EventEmitter {
   }
 
   streamUrl() {
-    const stream = symbolForStream(this.config.tickerSymbol) + '@continuousKline_' + this.config.interval;
+    const stream = symbolForStream(this.config.tickerSymbol) + '@continuousKline_' + this.config.candleInterval;
     return 'wss://dstream.binance.com/ws/' + stream;
   }
 
@@ -122,8 +122,9 @@ class BinanceSocket extends EventEmitter {
     if (existing >= 0) this.history[existing] = candle;
     else this.history.push(candle);
     this.history.sort((a, b) => a.openTime - b.openTime);
-    const cutoff = Date.now() - this.config.historyLength * 60 * 1000;
-    this.history = this.history.filter(item => item.openTime >= cutoff);
+    if (this.history.length > this.config.historyCandles) {
+      this.history = this.history.slice(-this.config.historyCandles);
+    }
   }
 
   candles(limit) {
@@ -137,8 +138,8 @@ class BinanceSocket extends EventEmitter {
       socketOpen: Boolean(this.socket && this.socket.readyState === this.WebSocket.OPEN),
       tickerSymbol: this.config.tickerSymbol,
       webSocketUrl: this.streamUrl(),
-      interval: this.config.interval,
-      historyLength: this.config.historyLength,
+	  interval: this.config.candleInterval,
+	  historyCandles: this.config.historyCandles,
       candles: this.history.length
     };
   }

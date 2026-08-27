@@ -16,13 +16,13 @@ function tempConfig(overrides = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'binancesocket-'));
   const configPath = path.join(directory, 'config.json');
   fs.writeFileSync(configPath, JSON.stringify({
-    tickerSymbol: 'BTCUSD_PERPETUAL', historyLength: 1000, interval: '1m', connected: false, ...overrides
+    tickerSymbol: 'BTCUSD_PERPETUAL', historyCandles: 1000, candleInterval: '1m', connected: false, ...overrides
   }));
   return { directory, configPath };
 }
 
 test('builds the Coin-M continuous stream URL', () => {
-  const { configPath, directory } = tempConfig({ interval: '5m' });
+  const { configPath, directory } = tempConfig({ candleInterval: '5m' });
   const service = new BinanceSocket({ configPath });
   assert.equal(service.streamUrl(), 'wss://dstream.binance.com/ws/btcusd_perpetual@continuousKline_5m');
   fs.rmSync(directory, { recursive: true, force: true });
@@ -40,13 +40,14 @@ test('stores only closed candles and replaces duplicate candles', () => {
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
-test('retains candles only inside the configured minute window', () => {
-  const { configPath, directory } = tempConfig({ historyLength: 2 });
+test('retains no more than the configured number of candles', () => {
+  const { configPath, directory } = tempConfig({ historyCandles: 2 });
   const service = new BinanceSocket({ configPath });
   const now = Date.now();
-  service.handleMessage(closedMessage(now - 180000));
-  service.handleMessage(closedMessage(now - 60000));
-  assert.equal(service.candles().length, 1);
+  service.handleMessage(closedMessage(now));
+  service.handleMessage(closedMessage(now + 60000));
+  service.handleMessage(closedMessage(now + 120000));
+  assert.equal(service.candles().length, 2);
   fs.rmSync(directory, { recursive: true, force: true });
 });
 

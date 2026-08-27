@@ -7,7 +7,7 @@ var logger = require('morgan');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var BinanceSocket = require('./services/binancesocket').BinanceSocket;
-var createBinanceRoutes = require('./routes/binancesocket');
+var createBinanceRoutes = require('./routes/binance');
 var createCandleRoutes = require('./routes/candles');
 var dashboardRouter = require('./routes/dashboard');
 
@@ -26,7 +26,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/dashboard', dashboardRouter);
-app.use('/binancesocket', createBinanceRoutes(binanceSocket));
+app.use('/binance', createBinanceRoutes(binanceSocket));
 app.use('/users', usersRouter);
 app.use('/', createCandleRoutes(binanceSocket));
 

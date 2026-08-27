@@ -67,8 +67,8 @@ Configuration of this server is stored in [config/binancesocket.json](config/bin
 ```json
 {
   "tickerSymbol": "BTCUSD_PERPETUAL",
-  "historyLength": 1000,
-  "interval": "1m",
+  "historyCandles": 1000,
+  "candleInterval": "1m",
   "connected": false
 }
 ```
@@ -78,8 +78,8 @@ Configuration of this server is stored in [config/binancesocket.json](config/bin
 | Field | Description | Example |
 | --- | --- | --- |
 | `tickerSymbol` | Binance Coin-M continuous contract | `BTCUSD_PERPETUAL` |
-| `historyLength` | Number of minutes to retain in memory | `1000` |
-| `interval` | Binance kline interval | `1m` |
+| `historyCandles` | Maximum number of completed candles to retain in memory | `1000` |
+| `candleInterval` | Binance kline interval | `1m` |
 | `connected` | Whether the service should connect on startup | `true` |
 
 Supported intervals include `1s`, `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `6h`, `8h`, `12h`, `1d`, `3d`, `1w`, and `1M`.
@@ -96,7 +96,7 @@ For the default configuration:
 wss://dstream.binance.com/ws/btcusd_perpetual@continuousKline_1m
 ```
 
-`historyLength` is measured in minutes, not candle count. For example, with a `5m` interval and a history length of `1000`, candles from approximately the last 1000 minutes are retained.
+`historyCandles` is a candle count. For example, with `historyCandles: 1000`, the service retains at most the latest 1000 completed candles, regardless of the configured interval.
 
 The `connected` value is changed automatically by the connect and disconnect endpoints. Do not edit it while the application is running unless you understand that the next service action may overwrite the value.
 
@@ -162,8 +162,8 @@ Example response:
   "socketOpen": true,
   "tickerSymbol": "BTCUSD_PERPETUAL",
   "webSocketUrl": "wss://dstream.binance.com/ws/btcusd_perpetual@continuousKline_1m",
-  "interval": "1m",
-  "historyLength": 1000,
+  "candleInterval": "1m",
+  "historyCandles": 1000,
   "candles": 42
 }
 ```
@@ -186,7 +186,7 @@ Example candle:
 ```json
 {
   "symbol": "btcusd",
-  "interval": "1m",
+  "candleInterval": "1m",
   "openTime": 1720000000000,
   "closeTime": 1720000059999,
   "open": "60000.0",
@@ -279,7 +279,7 @@ Confirm that the Express server is running and that the browser is using the sam
 
 ### Configuration validation fails
 
-Use an uppercase continuous-contract name such as `BTCUSD_PERPETUAL`, a positive integer for `historyLength`, and one of the supported Binance intervals.
+Use an uppercase continuous-contract name such as `BTCUSD_PERPETUAL`, a positive integer for `historyCandles`, and one of the supported Binance intervals in `candleInterval`.
 
 ## Security and deployment notes
 

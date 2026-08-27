@@ -1,6 +1,6 @@
 {
   "tickerSymbol": "BTCUSD_PERPETUAL",
-  "historyLength": 1000,
-  "interval": "1m",
-  "connected": true
+  "historyCandles": 1000,
+  "candleInterval": "1m",
+  "connected": false
 }

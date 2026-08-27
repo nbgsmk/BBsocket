@@ -17,7 +17,7 @@ function serviceStub() {
   return {
     config: { connected: false },
     candles: limit => limit ? [{ close: '101' }] : [{ close: '100' }, { close: '101' }],
-    status: () => ({ connected: false, socketOpen: false, tickerSymbol: 'BTCUSD_PERPETUAL', interval: '1m', historyLength: 1000, candles: 2 }),
+    status: () => ({ connected: false, socketOpen: false, tickerSymbol: 'BTCUSD_PERPETUAL', candleInterval: '1m', historyCandles: 1000, candles: 2 }),
     connect() {}, disconnect() {}, subscribe() { return () => {}; }
   };
 }

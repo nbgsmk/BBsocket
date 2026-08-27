@@ -20,9 +20,9 @@
       <h1><%= title %></h1>
       <p>Control the Binance Coin-M WebSocket connection.</p>
       <p><strong>WebSocket URL:</strong> <code id="websocket-url">Loading...</code></p>
-      <button type="button" data-action="connect">Connect</button>
-      <button type="button" data-action="disconnect">Disconnect</button>
-      <button type="button" data-action="status">Status</button>
+      <button type="button" data-action="connect">/connect</button>
+      <button type="button" data-action="disconnect">/disconnect</button>
+      <button type="button" data-action="status">/status</button>
       <button type="button" id="live-toggle">Enable live data</button>
       <p id="message" role="alert"></p>
       <pre id="response" aria-live="polite">Click a button to see the JSON response.</pre>
@@ -59,7 +59,7 @@
         message.textContent = '';
         response.textContent = 'Loading...';
         try {
-          const result = await fetch('/binancesocket/' + action);
+          const result = await fetch('/binance/' + action);
           const body = await result.json();
           if (!result.ok) throw new Error(body.error || 'Request failed');
           if (body.webSocketUrl) websocketUrl.textContent = body.webSocketUrl;
@@ -86,7 +86,7 @@
         }
 
         liveResponse.textContent = 'Waiting for socket data...';
-        liveSource = new EventSource('/binancesocket/live');
+        liveSource = new EventSource('/binance/live');
         liveSource.onmessage = event => {
           try {
             liveHistory.push({ raw: event.data, parsed: JSON.parse(event.data) });
