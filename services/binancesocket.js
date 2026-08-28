@@ -5,6 +5,11 @@ const WebSocket = require('ws');
 
 const CONFIG_PATH = path.join(__dirname, '..', 'config', 'binancesocket.json');
 const INTERVALS = new Set(['1s', '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M']);
+const INTERVAL_MS = new Map([
+  ['1s', 1000], ['1m', 60000], ['3m', 180000], ['5m', 300000], ['15m', 900000], ['30m', 1800000],
+  ['1h', 3600000], ['2h', 7200000], ['4h', 14400000], ['6h', 21600000], ['8h', 28800000],
+  ['12h', 43200000], ['1d', 86400000], ['3d', 259200000], ['1w', 604800000]
+]);
 
 function readConfig(configPath = CONFIG_PATH) {
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -135,6 +140,48 @@ class BinanceSocket extends EventEmitter {
   candles(symbol, limit) {
     const result = (this.histories[symbol] || []).slice().sort((a, b) => a.openTime - b.openTime);
     return Number.isInteger(limit) && limit > 0 ? result.slice(-limit) : result;
+  }
+
+  aggregateCandles(symbol, aggregation) {
+    if (!INTERVALS.has(aggregation) || !INTERVAL_MS.has(aggregation)) {
+      throw new Error('Aggregation must be a fixed Binance interval other than 1M');
+    }
+    const sourceInterval = this.config.subscriptionInterval;
+    const sourceMs = INTERVAL_MS.get(sourceInterval);
+    const targetMs = INTERVAL_MS.get(aggregation);
+    if (!sourceMs || targetMs < sourceMs || targetMs % sourceMs !== 0) {
+      throw new Error('Aggregation must be equal to or a multiple of subscriptionInterval');
+    }
+    if (targetMs === sourceMs) return this.candles(symbol);
+
+    const groups = new Map();
+    for (const candle of this.candles(symbol)) {
+      const bucket = Math.floor(candle.openTime / targetMs) * targetMs;
+      if (!groups.has(bucket)) groups.set(bucket, []);
+      groups.get(bucket).push(candle);
+    }
+
+    const aggregated = [];
+    const expected = targetMs / sourceMs;
+    for (const [openTime, group] of groups) {
+      group.sort((a, b) => a.openTime - b.openTime);
+      if (group.length !== expected || group.some((candle, index) => index > 0 && candle.openTime !== group[index - 1].openTime + sourceMs)) continue;
+      if (openTime + targetMs > Date.now()) continue;
+      aggregated.push({
+        symbol,
+        interval: aggregation,
+        openTime,
+        closeTime: openTime + targetMs - 1,
+        open: group[0].open,
+        high: String(Math.max(...group.map(candle => Number(candle.high)))),
+        low: String(Math.min(...group.map(candle => Number(candle.low)))),
+        close: group[group.length - 1].close,
+        volume: String(group.reduce((sum, candle) => sum + Number(candle.volume), 0)),
+        quoteVolume: String(group.reduce((sum, candle) => sum + Number(candle.quoteVolume), 0)),
+        trades: group.reduce((sum, candle) => sum + Number(candle.trades), 0)
+      });
+    }
+    return aggregated;
   }
 
   status() {

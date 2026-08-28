@@ -13,7 +13,14 @@ module.exports = function createCandleRoutes(service) {
     if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
       return res.status(400).json({ error: 'limit must be a positive integer' });
     }
-    res.json(service.candles(requested, limit));
+    try {
+      const result = req.query.aggregation
+        ? service.aggregateCandles(requested, req.query.aggregation)
+        : service.candles(requested);
+      res.json(Number.isInteger(limit) && limit > 0 ? result.slice(-limit) : result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
   });
 
   return router;

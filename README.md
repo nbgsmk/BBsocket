@@ -167,7 +167,10 @@ Example response:
   "webSocketUrl": "wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_1m/ethusd_perpetual@continuousKline_1m",
   "subscriptionInterval": "1m",
   "historyCandles": 1000,
-  "candles": 42
+  "candles": {
+    "btcusd": 42,
+    "ethusd": 41
+  }
 }
 ```
 
@@ -178,11 +181,14 @@ Example response:
 ```text
 GET /btcusd
 GET /ethusd?limit=100
+GET /btcusd?aggregation=5m&limit=100
 ```
 
 The path uses the public symbol portion of any configured continuous contract, lowercased. For `BTCUSD_PERPETUAL`, use `/btcusd`; for `ETHUSD_PERPETUAL`, use `/ethusd`.
 
 The optional `limit` parameter returns the newest requested number of candles. It must be a positive integer. The result can never contain more candles than are currently retained in memory.
+
+The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. For example, `GET /btcusd?aggregation=5m` combines five closed 1-minute candles into each 5-minute candle. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of `subscriptionInterval`; calendar-month aggregation (`1M`) is not supported.
 
 Example candle:
 

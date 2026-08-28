@@ -62,6 +62,27 @@ test('retains no more than the configured number of candles', () => {
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
+test('aggregates complete 1m candles into aligned intervals', () => {
+  const { configPath, directory } = tempConfig();
+  const service = new BinanceSocket({ configPath });
+  const bucket = Math.floor(Date.now() / 300000) * 300000 - 300000;
+  for (let index = 0; index < 5; index += 1) {
+    const candle = JSON.parse(closedMessage(bucket + index * 60000));
+    candle.k.o = String(100 + index);
+    candle.k.h = String(105 + index);
+    candle.k.l = String(95 - index);
+    candle.k.c = String(101 + index);
+    service.handleMessage(JSON.stringify(candle));
+  }
+  const result = service.aggregateCandles('btcusd', '5m');
+  assert.equal(result.length, 1);
+  assert.equal(result[0].open, '100');
+  assert.equal(result[0].close, '105');
+  assert.equal(result[0].high, '109');
+  assert.equal(result[0].low, '91');
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
 test('persists connection state and stops reconnecting after disconnect', () => {
   const { configPath, directory } = tempConfig();
   class FakeWebSocket {
