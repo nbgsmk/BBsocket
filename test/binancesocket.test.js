@@ -16,7 +16,7 @@ function tempConfig(overrides = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'binancesocket-'));
   const configPath = path.join(directory, 'config.json');
   fs.writeFileSync(configPath, JSON.stringify({
-    tickerSymbol: 'BTCUSD_PERPETUAL', historyCandles: 1000, subscriptionInterval: '1m', connected: false, ...overrides
+    tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], historyCandles: 1000, subscriptionInterval: '1m', connected: false, ...overrides
   }));
   return { directory, configPath };
 }
@@ -24,7 +24,7 @@ function tempConfig(overrides = {}) {
 test('builds the Coin-M continuous stream URL', () => {
   const { configPath, directory } = tempConfig({ subscriptionInterval: '5m' });
   const service = new BinanceSocket({ configPath });
-  assert.equal(service.streamUrl(), 'wss://dstream.binance.com/ws/btcusd_perpetual@continuousKline_5m');
+  assert.equal(service.streamUrl(), 'wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_5m/ethusd_perpetual@continuousKline_5m');
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
@@ -35,8 +35,19 @@ test('stores only closed candles and replaces duplicate candles', () => {
   service.handleMessage(JSON.stringify({ k: { t: 1, x: false } }));
   service.handleMessage(closedMessage(now));
   service.handleMessage(closedMessage(now).replace('"101"', '"103"'));
-  assert.equal(service.candles().length, 1);
-  assert.equal(service.candles()[0].close, '103');
+  assert.equal(service.candles('btcusd').length, 1);
+  assert.equal(service.candles('btcusd')[0].close, '103');
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
+test('keeps histories separate for combined-stream symbols', () => {
+  const { configPath, directory } = tempConfig();
+  const service = new BinanceSocket({ configPath });
+  const message = JSON.parse(closedMessage(Date.now()));
+  message.k.s = 'ETHUSD_PERPETUAL';
+  service.handleMessage(JSON.stringify({ stream: 'ethusd_perpetual@continuousKline_1m', data: message }));
+  assert.equal(service.candles('btcusd').length, 0);
+  assert.equal(service.candles('ethusd').length, 1);
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
@@ -47,7 +58,7 @@ test('retains no more than the configured number of candles', () => {
   service.handleMessage(closedMessage(now));
   service.handleMessage(closedMessage(now + 60000));
   service.handleMessage(closedMessage(now + 120000));
-  assert.equal(service.candles().length, 2);
+  assert.equal(service.candles('btcusd').length, 2);
   fs.rmSync(directory, { recursive: true, force: true });
 });
 

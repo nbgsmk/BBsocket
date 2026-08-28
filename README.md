@@ -66,7 +66,10 @@ Configuration of this server is stored in [config/binancesocket.json](config/bin
 
 ```json
 {
-  "tickerSymbol": "BTCUSD_PERPETUAL",
+  "tickerSymbols": [
+    "BTCUSD_PERPETUAL",
+    "ETHUSD_PERPETUAL"
+  ],
   "historyCandles": 1000,
   "subscriptionInterval": "1m",
   "connected": false
@@ -77,7 +80,7 @@ Configuration of this server is stored in [config/binancesocket.json](config/bin
 
 | Field | Description | Example |
 | --- | --- | --- |
-| `tickerSymbol` | Binance Coin-M continuous contract | `BTCUSD_PERPETUAL` |
+| `tickerSymbols` | Binance Coin-M continuous contracts | `["BTCUSD_PERPETUAL", "ETHUSD_PERPETUAL"]` |
 | `historyCandles` | Maximum number of completed candles to retain in memory | `1000` |
 | `subscriptionInterval` | Binance input-stream interval | `1m` |
 | `connected` | Whether the service should connect on startup | `true` |
@@ -87,13 +90,13 @@ Supported intervals include `1s`, `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4
 For a continuous contract, the WebSocket URL is generated as:
 
 ```text
-wss://dstream.binance.com/ws/{tickerSymbol}@continuousKline_{interval}
+wss://dstream.binance.com/stream?streams={symbol1}@continuousKline_{interval}/{symbol2}@continuousKline_{interval}
 ```
 
 For the default configuration:
 
 ```text
-wss://dstream.binance.com/ws/btcusd_perpetual@continuousKline_1m
+wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_1m/ethusd_perpetual@continuousKline_1m
 ```
 
 `historyCandles` is a candle count. For example, with `historyCandles: 1000`, the service retains at most the latest 1000 completed candles, regardless of the configured interval.
@@ -133,8 +136,8 @@ Open [http://localhost:3000/dashboard](http://localhost:3000/dashboard) in a bro
 ### Connect
 
 ```text
-GET  /binancesocket/connect
-POST /binancesocket/connect
+GET  /binance/connect
+POST /binance/connect
 ```
 
 Enables the service, persists `connected: true`, and opens the Binance WebSocket connection. The GET form is provided for convenient use from a browser address bar.
@@ -142,8 +145,8 @@ Enables the service, persists `connected: true`, and opens the Binance WebSocket
 ### Disconnect
 
 ```text
-GET  /binancesocket/disconnect
-POST /binancesocket/disconnect
+GET  /binance/disconnect
+POST /binance/disconnect
 ```
 
 Disables the service, persists `connected: false`, cancels pending reconnects, and closes the active WebSocket.
@@ -151,7 +154,7 @@ Disables the service, persists `connected: false`, cancels pending reconnects, a
 ### Status
 
 ```text
-GET /binancesocket/status
+GET /binance/status
 ```
 
 Example response:
@@ -160,8 +163,8 @@ Example response:
 {
   "connected": true,
   "socketOpen": true,
-  "tickerSymbol": "BTCUSD_PERPETUAL",
-  "webSocketUrl": "wss://dstream.binance.com/ws/btcusd_perpetual@continuousKline_1m",
+  "tickerSymbols": ["BTCUSD_PERPETUAL", "ETHUSD_PERPETUAL"],
+  "webSocketUrl": "wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_1m/ethusd_perpetual@continuousKline_1m",
   "subscriptionInterval": "1m",
   "historyCandles": 1000,
   "candles": 42
@@ -174,10 +177,10 @@ Example response:
 
 ```text
 GET /btcusd
-GET /btcusd?limit=100
+GET /ethusd?limit=100
 ```
 
-The path uses the public symbol portion of the configured continuous contract, lowercased. For `BTCUSD_PERPETUAL`, the endpoint is `/btcusd`. If the configured contract changes to `ETHUSD_PERPETUAL`, use `/ethusd`.
+The path uses the public symbol portion of any configured continuous contract, lowercased. For `BTCUSD_PERPETUAL`, use `/btcusd`; for `ETHUSD_PERPETUAL`, use `/ethusd`.
 
 The optional `limit` parameter returns the newest requested number of candles. It must be a positive integer. The result can never contain more candles than are currently retained in memory.
 
@@ -204,7 +207,7 @@ Only Binance messages whose kline close flag is true are included. The service d
 ### Live socket data
 
 ```text
-GET /binancesocket/live
+GET /binance/live
 ```
 
 This is a Server-Sent Events endpoint. It forwards incoming Binance WebSocket messages to connected browser clients, including updates for candles that are not yet closed. Each event is sent as a JSON `data:` field.
@@ -212,7 +215,7 @@ This is a Server-Sent Events endpoint. It forwards incoming Binance WebSocket me
 Example with curl:
 
 ```bash
-curl -N http://localhost:3000/binancesocket/live
+curl -N http://localhost:3000/binance/live
 ```
 
 The dashboard keeps the most recent 300 live messages in browser memory and displays them in a scrollable field. The formatting toggle switches between formatted JSON and normalized single-line JSON.

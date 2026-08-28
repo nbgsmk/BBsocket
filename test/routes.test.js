@@ -16,20 +16,20 @@ function createTestApp(service) {
 function serviceStub() {
   return {
     config: { connected: false },
-    candles: limit => limit ? [{ close: '101' }] : [{ close: '100' }, { close: '101' }],
-    status: () => ({ connected: false, socketOpen: false, tickerSymbol: 'BTCUSD_PERPETUAL', subscriptionInterval: '1m', historyCandles: 1000, candles: 2 }),
+    candles: (symbol, limit) => limit ? [{ symbol, close: '101' }] : [{ symbol, close: '100' }, { symbol, close: '101' }],
+    status: () => ({ connected: false, socketOpen: false, tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], subscriptionInterval: '1m', historyCandles: 1000, candles: { btcusd: 1, ethusd: 1 } }),
     connect() {}, disconnect() {}, subscribe() { return () => {}; }
   };
 }
 
 test('returns status and configured candles with limit validation', async () => {
   const response = await supertest(createTestApp(serviceStub())).get('/binancesocket/status').expect(200);
-  assert.equal(response.body.tickerSymbol, 'BTCUSD_PERPETUAL');
+  assert.deepEqual(response.body.tickerSymbols, ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL']);
   await supertest(createTestApp(serviceStub())).get('/btcusd?limit=1').expect(200).then(result => {
     assert.equal(result.body.length, 1);
   });
   await supertest(createTestApp(serviceStub())).get('/btcusd?limit=nope').expect(400);
-  await supertest(createTestApp(serviceStub())).get('/ethusd').expect(404);
+  await supertest(createTestApp(serviceStub())).get('/ltcusd').expect(404);
 });
 
 test('exposes an SSE live endpoint and forwards socket messages', async () => {

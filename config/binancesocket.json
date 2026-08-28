@@ -5,5 +5,5 @@
   ],
   "historyCandles": 1000,
   "subscriptionInterval": "1m",
-  "connected": false
+  "connected": true
 }
