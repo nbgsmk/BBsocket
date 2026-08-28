@@ -68,7 +68,7 @@ Configuration of this server is stored in [config/binancesocket.json](config/bin
 {
   "tickerSymbol": "BTCUSD_PERPETUAL",
   "historyCandles": 1000,
-  "candleInterval": "1m",
+  "subscriptionInterval": "1m",
   "connected": false
 }
 ```
@@ -79,7 +79,7 @@ Configuration of this server is stored in [config/binancesocket.json](config/bin
 | --- | --- | --- |
 | `tickerSymbol` | Binance Coin-M continuous contract | `BTCUSD_PERPETUAL` |
 | `historyCandles` | Maximum number of completed candles to retain in memory | `1000` |
-| `candleInterval` | Binance kline interval | `1m` |
+| `subscriptionInterval` | Binance input-stream interval | `1m` |
 | `connected` | Whether the service should connect on startup | `true` |
 
 Supported intervals include `1s`, `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `6h`, `8h`, `12h`, `1d`, `3d`, `1w`, and `1M`.
@@ -162,7 +162,7 @@ Example response:
   "socketOpen": true,
   "tickerSymbol": "BTCUSD_PERPETUAL",
   "webSocketUrl": "wss://dstream.binance.com/ws/btcusd_perpetual@continuousKline_1m",
-  "candleInterval": "1m",
+  "subscriptionInterval": "1m",
   "historyCandles": 1000,
   "candles": 42
 }
@@ -186,7 +186,7 @@ Example candle:
 ```json
 {
   "symbol": "btcusd",
-  "candleInterval": "1m",
+  "subscriptionInterval": "1m",
   "openTime": 1720000000000,
   "closeTime": 1720000059999,
   "open": "60000.0",
@@ -279,7 +279,7 @@ Confirm that the Express server is running and that the browser is using the sam
 
 ### Configuration validation fails
 
-Use an uppercase continuous-contract name such as `BTCUSD_PERPETUAL`, a positive integer for `historyCandles`, and one of the supported Binance intervals in `candleInterval`.
+Use an uppercase continuous-contract name such as `BTCUSD_PERPETUAL`, a positive integer for `historyCandles`, and one of the supported Binance intervals in `subscriptionInterval`.
 
 ## Security and deployment notes
 

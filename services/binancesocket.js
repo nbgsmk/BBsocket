@@ -8,14 +8,15 @@ const INTERVALS = new Set(['1s', '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h
 
 function readConfig(configPath = CONFIG_PATH) {
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  if (!/^[A-Z0-9]+_(PERPETUAL|CURRENT_QUARTER|NEXT_QUARTER)$/.test(config.tickerSymbol)) {
-    throw new Error('tickerSymbol must be a Coin-M continuous contract, e.g. BTCUSD_PERPETUAL');
+  if (!Array.isArray(config.tickerSymbols) || config.tickerSymbols.length < 1 || config.tickerSymbols.some(symbol => !/^[A-Z0-9]+_(PERPETUAL|CURRENT_QUARTER|NEXT_QUARTER)$/.test(symbol))) {
+    throw new Error('tickerSymbols must contain Coin-M continuous contracts, e.g. BTCUSD_PERPETUAL');
   }
+  if (new Set(config.tickerSymbols).size !== config.tickerSymbols.length) throw new Error('tickerSymbols must be unique');
   if (!Number.isInteger(config.historyCandles) || config.historyCandles < 1) {
     throw new Error('historyCandles must be a positive integer');
   }
-  if (!INTERVALS.has(config.candleInterval)) {
-    throw new Error('Unsupported Binance interval: ' + config.candleInterval);
+  if (!INTERVALS.has(config.subscriptionInterval)) {
+    throw new Error('Unsupported Binance interval: ' + config.subscriptionInterval);
   }
   config.connected = config.connected === true;
   return config;
@@ -42,14 +43,15 @@ class BinanceSocket extends EventEmitter {
     this.config = readConfig(this.configPath);
     this.WebSocket = options.WebSocket || WebSocket;
     this.socket = null;
-    this.history = [];
+    this.histories = {};
+    this.config.tickerSymbols.forEach(symbol => { this.histories[publicSymbol(symbol)] = []; });
     this.reconnectTimer = null;
     this.reconnectDelay = 1000;
   }
 
   streamUrl() {
-    const stream = symbolForStream(this.config.tickerSymbol) + '@continuousKline_' + this.config.candleInterval;
-    return 'wss://dstream.binance.com/ws/' + stream;
+    const streams = this.config.tickerSymbols.map(symbol => symbolForStream(symbol) + '@continuousKline_' + this.config.subscriptionInterval);
+    return 'wss://dstream.binance.com/stream?streams=' + streams.join('/');
   }
 
   connect() {
@@ -103,10 +105,12 @@ class BinanceSocket extends EventEmitter {
     let message;
     try { message = JSON.parse(rawMessage.toString()); } catch (_) { return; }
     this.emit('message', { raw: rawMessage.toString(), parsed: message });
-    const kline = message.k;
+    const kline = message.data ? message.data.k : message.k;
     if (!kline || kline.x !== true) return;
+    const symbol = publicSymbol(kline.s || (message.stream || '').split('@')[0]);
+    if (!this.histories[symbol]) return;
     const candle = {
-      symbol: publicSymbol(this.config.tickerSymbol),
+      symbol,
       interval: kline.i,
       openTime: kline.t,
       closeTime: kline.T,
@@ -118,17 +122,18 @@ class BinanceSocket extends EventEmitter {
       quoteVolume: kline.q,
       trades: kline.n
     };
-    const existing = this.history.findIndex(item => item.openTime === candle.openTime);
-    if (existing >= 0) this.history[existing] = candle;
-    else this.history.push(candle);
-    this.history.sort((a, b) => a.openTime - b.openTime);
-    if (this.history.length > this.config.historyCandles) {
-      this.history = this.history.slice(-this.config.historyCandles);
+    const history = this.histories[symbol];
+    const existing = history.findIndex(item => item.openTime === candle.openTime);
+    if (existing >= 0) history[existing] = candle;
+    else history.push(candle);
+    history.sort((a, b) => a.openTime - b.openTime);
+    if (history.length > this.config.historyCandles) {
+      this.histories[symbol] = history.slice(-this.config.historyCandles);
     }
   }
 
-  candles(limit) {
-    const result = this.history.slice().sort((a, b) => a.openTime - b.openTime);
+  candles(symbol, limit) {
+    const result = (this.histories[symbol] || []).slice().sort((a, b) => a.openTime - b.openTime);
     return Number.isInteger(limit) && limit > 0 ? result.slice(-limit) : result;
   }
 
@@ -136,11 +141,11 @@ class BinanceSocket extends EventEmitter {
     return {
       connected: this.config.connected,
       socketOpen: Boolean(this.socket && this.socket.readyState === this.WebSocket.OPEN),
-      tickerSymbol: this.config.tickerSymbol,
+      tickerSymbols: this.config.tickerSymbols,
       webSocketUrl: this.streamUrl(),
-	  interval: this.config.candleInterval,
+	  subscriptionInterval: this.config.subscriptionInterval,
 	  historyCandles: this.config.historyCandles,
-      candles: this.history.length
+      candles: Object.fromEntries(Object.entries(this.histories).map(([symbol, history]) => [symbol, history.length]))
     };
   }
 

@@ -16,13 +16,13 @@ function tempConfig(overrides = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'binancesocket-'));
   const configPath = path.join(directory, 'config.json');
   fs.writeFileSync(configPath, JSON.stringify({
-    tickerSymbol: 'BTCUSD_PERPETUAL', historyCandles: 1000, candleInterval: '1m', connected: false, ...overrides
+    tickerSymbol: 'BTCUSD_PERPETUAL', historyCandles: 1000, subscriptionInterval: '1m', connected: false, ...overrides
   }));
   return { directory, configPath };
 }
 
 test('builds the Coin-M continuous stream URL', () => {
-  const { configPath, directory } = tempConfig({ candleInterval: '5m' });
+  const { configPath, directory } = tempConfig({ subscriptionInterval: '5m' });
   const service = new BinanceSocket({ configPath });
   assert.equal(service.streamUrl(), 'wss://dstream.binance.com/ws/btcusd_perpetual@continuousKline_5m');
   fs.rmSync(directory, { recursive: true, force: true });
