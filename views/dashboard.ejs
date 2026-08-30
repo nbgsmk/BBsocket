@@ -59,7 +59,7 @@
         message.textContent = '';
         response.textContent = 'Loading...';
         try {
-          const result = await fetch('/binance/' + action);
+          const result = await fetch('/api/v1/binance/' + action);
           const body = await result.json();
           if (!result.ok) throw new Error(body.error || 'Request failed');
           if (body.webSocketUrl) websocketUrl.textContent = body.webSocketUrl;
@@ -86,7 +86,7 @@
         }
 
         liveResponse.textContent = 'Waiting for socket data...';
-        liveSource = new EventSource('/binance/live');
+        liveSource = new EventSource('/api/v1/binance/live');
         liveSource.onmessage = event => {
           try {
             liveHistory.push({ raw: event.data, parsed: JSON.parse(event.data) });

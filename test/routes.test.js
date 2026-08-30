@@ -3,13 +3,11 @@ const express = require('express');
 const fs = require('node:fs');
 const supertest = require('supertest');
 const test = require('node:test');
-const createBinanceRoutes = require('../routes/binancesocket');
-const createCandleRoutes = require('../routes/candles');
+const createApiV1Routes = require('../routes/api/v1');
 
 function createTestApp(service) {
   const app = express();
-  app.use('/binancesocket', createBinanceRoutes(service));
-  app.use('/', createCandleRoutes(service));
+  app.use('/api/v1', createApiV1Routes(service));
   return app;
 }
 
@@ -23,20 +21,20 @@ function serviceStub() {
 }
 
 test('returns status and configured candles with limit validation', async () => {
-  const response = await supertest(createTestApp(serviceStub())).get('/binancesocket/status').expect(200);
+  const response = await supertest(createTestApp(serviceStub())).get('/api/v1/binance/status').expect(200);
   assert.deepEqual(response.body.tickerSymbols, ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL']);
-  await supertest(createTestApp(serviceStub())).get('/btcusd?limit=1').expect(200).then(result => {
+  await supertest(createTestApp(serviceStub())).get('/api/v1/binance/candles/btcusd?limit=1').expect(200).then(result => {
     assert.equal(result.body.length, 1);
   });
-  await supertest(createTestApp(serviceStub())).get('/btcusd?limit=nope').expect(400);
-  await supertest(createTestApp(serviceStub())).get('/ltcusd').expect(404);
+  await supertest(createTestApp(serviceStub())).get('/api/v1/binance/candles/btcusd?limit=nope').expect(400);
+  await supertest(createTestApp(serviceStub())).get('/api/v1/binance/candles/ltcusd').expect(404);
 });
 
 test('exposes an SSE live endpoint and forwards socket messages', async () => {
   let listener;
   const service = serviceStub();
   service.subscribe = callback => { listener = callback; return () => {}; };
-  const request = supertest(createTestApp(service)).get('/binancesocket/live');
+  const request = supertest(createTestApp(service)).get('/api/v1/binance/live');
   const result = await new Promise((resolve, reject) => {
     request.buffer(true).parse((response, callback) => {
       response.on('data', chunk => {

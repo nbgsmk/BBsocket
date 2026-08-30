@@ -168,7 +168,7 @@ Disables the service, persists `connected: false`, cancels pending reconnects, a
 ### Status
 
 ```text
-GET /binance/status
+GET /api/v1/binance/status
 ```
 
 Example response:
@@ -193,16 +193,16 @@ Example response:
 ### Candles
 
 ```text
-GET /btcusd
-GET /ethusd?limit=100
-GET /btcusd?aggregation=5m&limit=100
+GET /api/v1/binance/candles/btcusd
+GET /api/v1/binance/candles/ethusd?limit=100
+GET /api/v1/binance/candles/btcusd?aggregation=5m&limit=100
 ```
 
-The path uses the public symbol portion of any configured continuous contract, lowercased. For `BTCUSD_PERPETUAL`, use `/btcusd`; for `ETHUSD_PERPETUAL`, use `/ethusd`.
+The path uses the public symbol portion of any configured continuous contract, lowercased. For `BTCUSD_PERPETUAL`, use `/api/v1/binance/candles/btcusd`; for `ETHUSD_PERPETUAL`, use `/api/v1/binance/candles/ethusd`.
 
 The optional `limit` parameter returns the newest requested number of candles. It must be a positive integer. The result can never contain more candles than are currently retained in memory.
 
-The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. For example, `GET /btcusd?aggregation=5m` combines five closed 1-minute candles into each 5-minute candle. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of `subscriptionInterval`; calendar-month aggregation (`1M`) is not supported.
+The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. For example, `GET /api/v1/binance/candles/btcusd?aggregation=5m` combines five closed 1-minute candles into each 5-minute candle. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of `subscriptionInterval`; calendar-month aggregation (`1M`) is not supported.
 
 Example candle:
 
@@ -227,7 +227,7 @@ Only Binance messages whose kline close flag is true are included. The service d
 ### Live socket data
 
 ```text
-GET /binance/live
+GET /api/v1/binance/live
 ```
 
 This is a Server-Sent Events endpoint. It forwards incoming Binance WebSocket messages to connected browser clients, including updates for candles that are not yet closed. Each event is sent as a JSON `data:` field.
@@ -235,7 +235,7 @@ This is a Server-Sent Events endpoint. It forwards incoming Binance WebSocket me
 Example with curl:
 
 ```bash
-curl -N http://localhost:3000/binance/live
+curl -N http://localhost:3000/api/v1/binance/live
 ```
 
 The dashboard keeps the most recent 300 live messages in browser memory and displays them in a scrollable field. The formatting toggle switches between formatted JSON and normalized single-line JSON.
