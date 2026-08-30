@@ -6,7 +6,7 @@ var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
-var BinanceSocket = require('./services/binancesocket').BinanceSocket;
+var BinanceSocket = require('./services/exchanges/binance/service').BinanceSocket;
 var createBinanceRoutes = require('./routes/binance');
 var createCandleRoutes = require('./routes/candles');
 var dashboardRouter = require('./routes/dashboard');

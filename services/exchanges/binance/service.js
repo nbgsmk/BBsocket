@@ -3,7 +3,7 @@ const path = require('path');
 const EventEmitter = require('events');
 const WebSocket = require('ws');
 
-const CONFIG_PATH = path.join(__dirname, '..', 'config', 'binancesocket.json');
+const CONFIG_PATH = path.join(__dirname, '..', '..', '..', 'config', 'binancesocket.json');
 const INTERVALS = new Set(['1s', '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M']);
 const INTERVAL_MS = new Map([
   ['1s', 1000], ['1m', 60000], ['3m', 180000], ['5m', 300000], ['15m', 900000], ['30m', 1800000],

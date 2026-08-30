@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
-const { BinanceSocket } = require('../services/binancesocket');
+const { BinanceSocket } = require('../services/exchanges/binance/service');
 
 const closedMessage = (openTime, closeTime = openTime + 59999) => JSON.stringify({
   e: 'continuous_kline', k: {
