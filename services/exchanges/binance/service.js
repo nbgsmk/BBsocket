@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const EventEmitter = require('events');
 const WebSocket = require('ws');
+const ExchangeService = require('../exchange-service');
 
 const CONFIG_PATH = path.join(__dirname, '..', '..', '..', 'config', 'binancesocket.json');
 const INTERVALS = new Set(['1s', '1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M']);
@@ -41,7 +41,7 @@ function publicSymbol(tickerSymbol) {
   return tickerSymbol.split('_')[0].toLowerCase();
 }
 
-class BinanceSocket extends EventEmitter {
+class BinanceSocket extends ExchangeService {
   constructor(options = {}) {
     super();
     this.configPath = options.configPath || CONFIG_PATH;
@@ -197,8 +197,7 @@ class BinanceSocket extends EventEmitter {
   }
 
   subscribe(listener) {
-    this.on('message', listener);
-    return () => this.removeListener('message', listener);
+    return super.subscribe(listener);
   }
 }
 

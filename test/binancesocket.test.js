@@ -4,6 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const { BinanceSocket } = require('../services/exchanges/binance/service');
+const ExchangeService = require('../services/exchanges/exchange-service');
 
 const closedMessage = (openTime, closeTime = openTime + 59999) => JSON.stringify({
   e: 'continuous_kline', k: {
@@ -25,6 +26,16 @@ test('builds the Coin-M continuous stream URL', () => {
   const { configPath, directory } = tempConfig({ subscriptionInterval: '5m' });
   const service = new BinanceSocket({ configPath });
   assert.equal(service.streamUrl(), 'wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_5m/ethusd_perpetual@continuousKline_5m');
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
+test('implements the common exchange service interface', () => {
+  const { configPath, directory } = tempConfig();
+  const service = new BinanceSocket({ configPath });
+  assert.ok(service instanceof ExchangeService);
+  for (const method of ['connect', 'disconnect', 'status', 'candles', 'subscribe']) {
+    assert.equal(typeof service[method], 'function');
+  }
   fs.rmSync(directory, { recursive: true, force: true });
 });
 

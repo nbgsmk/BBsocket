@@ -32,6 +32,20 @@ The browser test expects the application to be running at `http://127.0.0.1:3000
 - HTTP endpoints for connection control, status, candles, and live socket data.
 - Browser dashboard with connection controls, live data history, and JSON formatting toggle.
 
+## Exchange service interface
+
+Exchange implementations follow the common contract in `services/exchanges/exchange-service.js`:
+
+```js
+connect()
+disconnect()
+status()
+candles(symbol, options)
+subscribe(listener)
+```
+
+The Binance implementation is located at `services/exchanges/binance/service.js`. Exchange-specific connection URLs, message parsing, symbol handling, and reconnect behavior remain inside each exchange implementation. The shared subscription method publishes normalized incoming market messages through the service's `message` event.
+
 ## Requirements
 
 - Node.js 20 or newer is recommended. Node.js 10 or newer is required by the `ws` dependency.
