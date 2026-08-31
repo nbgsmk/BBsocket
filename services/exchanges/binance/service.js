@@ -106,7 +106,7 @@ class BinanceSocket extends ExchangeService {
     try { message = JSON.parse(rawMessage.toString()); } catch (_) { return; }
     this.emit('message', { raw: rawMessage.toString(), parsed: message });
     const kline = message.data ? message.data.k : message.k;
-    if (!kline || kline.x !== true) return;
+    if (!kline) return;
     const symbol = publicSymbol(kline.s || (message.stream || '').split('@')[0]);
     if (!this.history.histories[symbol]) return;
     const candle = {
@@ -120,20 +120,21 @@ class BinanceSocket extends ExchangeService {
       close: kline.c,
       volume: kline.v,
       quoteVolume: kline.q,
-      trades: kline.n
+      trades: kline.n,
+      closed: kline.x === true
     };
-    this.history.add(candle);
+    this.history.update(candle);
   }
 
   candles(symbol, limit) {
     return this.history.candles(symbol, limit);
   }
 
-  aggregateCandles(symbol, aggregation) {
+  aggregateCandles(symbol, aggregation, includeIncomplete = false) {
     if (!INTERVALS.has(aggregation)) {
       throw new Error('Aggregation must be a fixed Binance interval other than 1M');
     }
-    return this.history.aggregate(symbol, aggregation);
+    return this.history.aggregate(symbol, aggregation, includeIncomplete);
   }
 
   status() {
@@ -150,6 +151,10 @@ class BinanceSocket extends ExchangeService {
 
   subscribe(listener) {
     return super.subscribe(listener);
+  }
+
+  subscribeCandles(listener) {
+    return this.history.subscribe(listener);
   }
 }
 

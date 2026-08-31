@@ -196,6 +196,7 @@ Example response:
 GET /api/v1/binance/candles/btcusd
 GET /api/v1/binance/candles/ethusd?limit=100
 GET /api/v1/binance/candles/btcusd?aggregation=5m&limit=100
+GET /api/v1/binance/candles/btcusd?aggregation=15m&includeIncomplete=true
 ```
 
 The path uses the public symbol portion of any configured continuous contract, lowercased. For `BTCUSD_PERPETUAL`, use `/api/v1/binance/candles/btcusd`; for `ETHUSD_PERPETUAL`, use `/api/v1/binance/candles/ethusd`.
@@ -203,6 +204,8 @@ The path uses the public symbol portion of any configured continuous contract, l
 The optional `limit` parameter returns the newest requested number of candles. It must be a positive integer. The result can never contain more candles than are currently retained in memory.
 
 The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. For example, `GET /api/v1/binance/candles/btcusd?aggregation=5m` combines five closed 1-minute candles into each 5-minute candle. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of `subscriptionInterval`; calendar-month aggregation (`1M`) is not supported.
+
+Set `includeIncomplete=true` to include the current in-progress aggregate in the HTTP snapshot. It is marked with `closed: false` and is built from the latest live 1-minute update. It is not added to completed history.
 
 Example candle:
 
@@ -231,6 +234,14 @@ GET /api/v1/binance/live
 ```
 
 This is a Server-Sent Events endpoint. It forwards incoming Binance WebSocket messages to connected browser clients, including updates for candles that are not yet closed. Each event is sent as a JSON `data:` field.
+
+For server-aggregated live candles, use:
+
+```text
+GET /api/v1/binance/candles/btcusd/live?aggregation=15m
+```
+
+This keeps an SSE connection open and sends the newest aggregate whenever the selected symbol receives a 1-minute update. The same aggregate is updated by `openTime`; clients should replace an existing chart candle when that timestamp repeats. Updates have `closed: false` until the 15-minute window completes, then the final update has `closed: true`.
 
 Example with curl:
 
