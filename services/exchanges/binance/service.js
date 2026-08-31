@@ -16,10 +16,10 @@ function readConfig(configPath = CONFIG_PATH) {
   if (!Number.isInteger(config.historyCandles) || config.historyCandles < 1) {
     throw new Error('historyCandles must be a positive integer');
   }
-  if (!INTERVALS.has(config.subscriptionInterval)) {
-    throw new Error('Unsupported Binance interval: ' + config.subscriptionInterval);
+  if (!INTERVALS.has(config.exchangeCandlestickStreamInterval)) {
+    throw new Error('Unsupported Binance interval: ' + config.exchangeCandlestickStreamInterval);
   }
-  config.connected = config.connected === true;
+  config.initiallyConnected = config.initiallyConnected === true;
   return config;
 }
 
@@ -44,13 +44,13 @@ class BinanceSocket extends ExchangeService {
     this.config = readConfig(this.configPath);
     this.WebSocket = options.WebSocket || WebSocket;
     this.socket = null;
-    this.history = new CandleHistory(this.config.historyCandles, this.config.subscriptionInterval, this.config.tickerSymbols.map(publicSymbol));
+    this.history = new CandleHistory(this.config.historyCandles, this.config.exchangeCandlestickStreamInterval, this.config.tickerSymbols.map(publicSymbol));
     this.reconnectTimer = null;
     this.reconnectDelay = 1000;
   }
 
   streamUrl() {
-    const streams = this.config.tickerSymbols.map(symbol => symbolForStream(symbol) + '@continuousKline_' + this.config.subscriptionInterval);
+    const streams = this.config.tickerSymbols.map(symbol => symbolForStream(symbol) + '@continuousKline_' + this.config.exchangeCandlestickStreamInterval);
     return 'wss://dstream.binance.com/stream?streams=' + streams.join('/');
   }
 
@@ -59,7 +59,7 @@ class BinanceSocket extends ExchangeService {
       return;
     }
     this.config = readConfig(this.configPath);
-    this.config.connected = true;
+    this.config.initiallyConnected = true;
     writeConfig(this.config, this.configPath);
     this.openSocket();
   }
@@ -72,7 +72,7 @@ class BinanceSocket extends ExchangeService {
     socket.on('error', error => console.error('Binance WebSocket error:', error.message));
     socket.on('close', () => {
       if (this.socket === socket) this.socket = null;
-      if (this.config.connected) this.scheduleReconnect();
+      if (this.config.initiallyConnected) this.scheduleReconnect();
     });
   }
 
@@ -82,13 +82,13 @@ class BinanceSocket extends ExchangeService {
     this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      if (this.config.connected) this.openSocket();
+      if (this.config.initiallyConnected) this.openSocket();
     }, delay);
   }
 
   disconnect() {
     this.config = readConfig(this.configPath);
-    this.config.connected = false;
+    this.config.initiallyConnected = false;
     writeConfig(this.config, this.configPath);
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -139,11 +139,11 @@ class BinanceSocket extends ExchangeService {
 
   status() {
     return {
-      connected: this.config.connected,
+      connected: this.config.initiallyConnected,
       socketOpen: Boolean(this.socket && this.socket.readyState === this.WebSocket.OPEN),
       tickerSymbols: this.config.tickerSymbols,
       webSocketUrl: this.streamUrl(),
-	  subscriptionInterval: this.config.subscriptionInterval,
+	  exchangeCandlestickStreamInterval: this.config.exchangeCandlestickStreamInterval,
 	  historyCandles: this.config.historyCandles,
       candles: this.history.counts()
     };

@@ -4,6 +4,6 @@
     "ETHUSD_PERPETUAL"
   ],
   "historyCandles": 1000,
-  "subscriptionInterval": "1m",
-  "connected": true
+  "exchangeCandlestickStreamInterval": "1m",
+  "initiallyConnected": true
 }

@@ -28,7 +28,7 @@ app.use('/dashboard', dashboardRouter);
 app.use('/users', usersRouter);
 app.use('/api/v1', createApiV1Routes(binanceSocket));
 
-if (binanceSocket.config.connected) binanceSocket.connect();
+if (binanceSocket.config.initiallyConnected) binanceSocket.connect();
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

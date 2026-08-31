@@ -17,13 +17,13 @@ function tempConfig(overrides = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'binancesocket-'));
   const configPath = path.join(directory, 'config.json');
   fs.writeFileSync(configPath, JSON.stringify({
-    tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], historyCandles: 1000, subscriptionInterval: '1m', connected: false, ...overrides
+    tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], historyCandles: 1000, exchangeCandlestickStreamInterval: '1m', initiallyConnected: false, ...overrides
   }));
   return { directory, configPath };
 }
 
 test('builds the Coin-M continuous stream URL', () => {
-  const { configPath, directory } = tempConfig({ subscriptionInterval: '5m' });
+  const { configPath, directory } = tempConfig({ exchangeCandlestickStreamInterval: '5m' });
   const service = new BinanceSocket({ configPath });
   assert.equal(service.streamUrl(), 'wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_5m/ethusd_perpetual@continuousKline_5m');
   fs.rmSync(directory, { recursive: true, force: true });
@@ -118,8 +118,8 @@ test('persists connection state and stops reconnecting after disconnect', () => 
   }
   const service = new BinanceSocket({ configPath, WebSocket: FakeWebSocket });
   service.connect();
-  assert.equal(JSON.parse(fs.readFileSync(configPath)).connected, true);
+  assert.equal(JSON.parse(fs.readFileSync(configPath)).initiallyConnected, true);
   service.disconnect();
-  assert.equal(JSON.parse(fs.readFileSync(configPath)).connected, false);
+  assert.equal(JSON.parse(fs.readFileSync(configPath)).initiallyConnected, false);
   fs.rmSync(directory, { recursive: true, force: true });
 });

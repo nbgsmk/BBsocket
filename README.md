@@ -85,8 +85,8 @@ Configuration of this server is stored in [config/binancesocket.json](config/bin
     "ETHUSD_PERPETUAL"
   ],
   "historyCandles": 1000,
-  "subscriptionInterval": "1m",
-  "connected": false
+  "exchangeCandlestickStreamInterval": "1m",
+  "initiallyConnected": false
 }
 ```
 
@@ -96,8 +96,8 @@ Configuration of this server is stored in [config/binancesocket.json](config/bin
 | --- | --- | --- |
 | `tickerSymbols` | Binance Coin-M continuous contracts | `["BTCUSD_PERPETUAL", "ETHUSD_PERPETUAL"]` |
 | `historyCandles` | Maximum number of completed candles to retain in memory | `1000` |
-| `subscriptionInterval` | Binance input-stream interval | `1m` |
-| `connected` | Whether the service should connect on startup | `true` |
+| `exchangeCandlestickStreamInterval` | Exchange candlestick stream input interval | `1m` |
+| `initiallyConnected` | Whether the service should connect on startup and remain enabled for reconnects | `true` |
 
 Supported intervals include `1s`, `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `6h`, `8h`, `12h`, `1d`, `3d`, `1w`, and `1M`.
 
@@ -115,7 +115,7 @@ wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_1m/eth
 
 `historyCandles` is a candle count. For example, with `historyCandles: 1000`, the service retains at most the latest 1000 completed candles, regardless of the configured interval.
 
-The `connected` value is changed automatically by the connect and disconnect endpoints. Do not edit it while the application is running unless you understand that the next service action may overwrite the value.
+The `initiallyConnected` value is changed automatically by the connect and disconnect endpoints. The status API continues to expose the current runtime state as `connected`.
 
 ### Server configuration
 
@@ -154,7 +154,7 @@ GET  /binance/connect
 POST /binance/connect
 ```
 
-Enables the service, persists `connected: true`, and opens the Binance WebSocket connection. The GET form is provided for convenient use from a browser address bar.
+Enables the service, persists `initiallyConnected: true`, and opens the Binance WebSocket connection. The GET form is provided for convenient use from a browser address bar.
 
 ### Disconnect
 
@@ -163,7 +163,7 @@ GET  /binance/disconnect
 POST /binance/disconnect
 ```
 
-Disables the service, persists `connected: false`, cancels pending reconnects, and closes the active WebSocket.
+Disables the service, persists `initiallyConnected: false`, cancels pending reconnects, and closes the active WebSocket.
 
 ### Status
 
@@ -179,7 +179,7 @@ Example response:
   "socketOpen": true,
   "tickerSymbols": ["BTCUSD_PERPETUAL", "ETHUSD_PERPETUAL"],
   "webSocketUrl": "wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_1m/ethusd_perpetual@continuousKline_1m",
-  "subscriptionInterval": "1m",
+  "exchangeCandlestickStreamInterval": "1m",
   "historyCandles": 1000,
   "candles": {
     "btcusd": 42,
@@ -203,7 +203,7 @@ The path uses the public symbol portion of any configured continuous contract, l
 
 The optional `limit` parameter returns the newest requested number of candles. It must be a positive integer. The result can never contain more candles than are currently retained in memory.
 
-The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. For example, `GET /api/v1/binance/candles/btcusd?aggregation=5m` combines five closed 1-minute candles into each 5-minute candle. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of `subscriptionInterval`; calendar-month aggregation (`1M`) is not supported.
+The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. For example, `GET /api/v1/binance/candles/btcusd?aggregation=5m` combines five closed 1-minute candles into each 5-minute candle. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of `exchangeCandlestickStreamInterval`; calendar-month aggregation (`1M`) is not supported.
 
 Set `includeIncomplete=true` to include the current in-progress aggregate in the HTTP snapshot. It is marked with `closed: false` and is built from the latest live 1-minute update. It is not added to completed history.
 
@@ -212,7 +212,7 @@ Example candle:
 ```json
 {
   "symbol": "btcusd",
-  "subscriptionInterval": "1m",
+  "exchangeCandlestickStreamInterval": "1m",
   "openTime": 1720000000000,
   "closeTime": 1720000059999,
   "open": "60000.0",
@@ -313,7 +313,7 @@ Confirm that the Express server is running and that the browser is using the sam
 
 ### Configuration validation fails
 
-Use an uppercase continuous-contract name such as `BTCUSD_PERPETUAL`, a positive integer for `historyCandles`, and one of the supported Binance intervals in `subscriptionInterval`.
+Use an uppercase continuous-contract name such as `BTCUSD_PERPETUAL`, a positive integer for `historyCandles`, and one of the supported intervals in `exchangeCandlestickStreamInterval`.
 
 ## Security and deployment notes
 

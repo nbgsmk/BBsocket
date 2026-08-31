@@ -50,7 +50,7 @@ class CandleHistory extends EventEmitter {
     const targetMs = INTERVAL_MS.get(aggregation);
     if (!targetMs) throw new Error('Aggregation must be a fixed interval other than 1M');
     if (!sourceMs || targetMs < sourceMs || targetMs % sourceMs !== 0) {
-      throw new Error('Aggregation must be equal to or a multiple of subscriptionInterval');
+      throw new Error('Aggregation must be equal to or a multiple of exchangeCandlestickStreamInterval');
     }
     const sourceCandles = this.candles(symbol);
     if (includeIncomplete && this.current[symbol]) sourceCandles.push(this.current[symbol]);

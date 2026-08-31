@@ -15,7 +15,7 @@ function serviceStub() {
   return {
     config: { connected: false },
     candles: (symbol, limit) => limit ? [{ symbol, close: '101' }] : [{ symbol, close: '100' }, { symbol, close: '101' }],
-    status: () => ({ connected: false, socketOpen: false, tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], subscriptionInterval: '1m', historyCandles: 1000, candles: { btcusd: 1, ethusd: 1 } }),
+    status: () => ({ connected: false, socketOpen: false, tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], exchangeCandlestickStreamInterval: '1m', historyCandles: 1000, candles: { btcusd: 1, ethusd: 1 } }),
     connect() {}, disconnect() {}, subscribe() { return () => {}; }
   };
 }
