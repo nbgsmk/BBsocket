@@ -4,9 +4,14 @@ This is a node.js Express application that connects to Binance Coin-M Futures co
 
 ## Current project status
 
-The implementation is complete. The remaining task is to run the automated tests in the local WebStorm environment and resolve any test-only issues that appear.
+The Binance implementation and shared market-data foundation are complete. The next planned feature is a real Deribit exchange adapter.
 
 - Service, configuration, APIs, dashboard, live SSE feed, JSON formatting toggle, and documentation are implemented.
+- Binance supports multiple symbols over one combined 1-minute candlestick stream.
+- Shared candle history and aggregation are implemented in `services/market-data/candle-history.js`.
+- Versioned Binance endpoints are under `/api/v1/binance`.
+- Normalized candles use `candlestickIsClosed` to distinguish completed and incomplete data.
+- Incomplete HTTP aggregation and aggregated live SSE are supported.
 - Unit/API/SSE/dashboard contract tests are present under `test/`.
 - The optional Playwright browser test requires Chromium to be installed.
 - WebStorm’s bundled Node runtime can be used if `node` is not available on the terminal `PATH`.
@@ -23,10 +28,10 @@ The browser test expects the application to be running at `http://127.0.0.1:3000
 
 ## Features
 
-- Binance Coin-M continuous-contract kline streams (1 second update).
-- Configurable contract symbol, candle interval, and history window.
+- Binance Coin-M continuous-contract candlestick streams.
+- Configurable contract symbols, exchange stream interval, and history size.
 - Closed candlesticks only (`k.x === true`) are stored and returned to the calling browser.
-- In-memory retention based on a configurable number of minutes.
+- In-memory retention based on a configurable number of candles per symbol.
 - Automatic reconnect with exponential backoff after unexpected disconnects.
 - Persisted connection state in the configuration file.
 - HTTP endpoints for connection control, status, candles, and live socket data.
@@ -45,6 +50,42 @@ subscribe(listener)
 ```
 
 The Binance implementation is located at `services/exchanges/binance/service.js`. Exchange-specific connection URLs, message parsing, symbol handling, and reconnect behavior remain inside each exchange implementation. The shared subscription method publishes normalized incoming market messages through the service's `message` event.
+
+## Next planned development step
+
+Implement a real Deribit adapter using the official Deribit API documentation. It should implement the same exchange-service interface, normalize Deribit market data into the shared candle format, and reuse the existing per-symbol history, aggregation, incomplete-candle, and live-SSE behavior. After that, add versioned Deribit routes.
+
+### Deferred cross-exchange endpoints
+
+Cross-exchange retrieval is planned but intentionally deferred for a later decision. A possible endpoint is:
+
+```text
+GET /api/v1/markets/candles?aggregation=1h&limit=100
+```
+
+It could return all configured markets grouped by exchange and symbol:
+
+```json
+{
+  "binance": {
+    "btcusd": { "candles": [] },
+    "ethusd": { "candles": [] }
+  },
+  "deribit": {
+    "btc-perpetual": { "candles": [] }
+  }
+}
+```
+
+Specific markets could be requested with:
+
+```text
+GET /api/v1/markets/candles?markets=binance:btcusd,deribit:btc-perpetual&aggregation=1h
+```
+
+Aggregation would apply consistently to every requested market, and `limit` would apply per symbol. Results would remain grouped because exchange symbols and instrument names may differ. If one exchange is unavailable, the response should return the other exchange’s data and report a per-market error rather than failing the entire request.
+
+Exchange connection control would remain exchange-specific, for example `/api/v1/binance/connect` and `/api/v1/deribit/connect`.
 
 ## Requirements
 
