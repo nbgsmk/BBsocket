@@ -103,7 +103,7 @@ test('keeps an open source candle out of history but includes it in live aggrega
   assert.equal(service.candles('btcusd').length, 0);
   const result = service.aggregateCandles('btcusd', '5m', true);
   assert.equal(result.length, 1);
-  assert.equal(result[0].closed, false);
+  assert.equal(result[0].candlestickIsClosed, false);
   fs.rmSync(directory, { recursive: true, force: true });
 });
 

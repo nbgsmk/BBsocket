@@ -205,7 +205,7 @@ The optional `limit` parameter returns the newest requested number of candles. I
 
 The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. For example, `GET /api/v1/binance/candles/btcusd?aggregation=5m` combines five closed 1-minute candles into each 5-minute candle. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of `exchangeCandlestickStreamInterval`; calendar-month aggregation (`1M`) is not supported.
 
-Set `includeIncomplete=true` to include the current in-progress aggregate in the HTTP snapshot. It is marked with `closed: false` and is built from the latest live 1-minute update. It is not added to completed history.
+Set `includeIncomplete=true` to include the current in-progress aggregate in the HTTP snapshot. It is marked with `candlestickIsClosed: false` and is built from the latest live 1-minute update. It is not added to completed history.
 
 Example candle:
 
@@ -241,7 +241,7 @@ For server-aggregated live candles, use:
 GET /api/v1/binance/candles/btcusd/live?aggregation=15m
 ```
 
-This keeps an SSE connection open and sends the newest aggregate whenever the selected symbol receives a 1-minute update. The same aggregate is updated by `openTime`; clients should replace an existing chart candle when that timestamp repeats. Updates have `closed: false` until the 15-minute window completes, then the final update has `closed: true`.
+This keeps an SSE connection open and sends the newest aggregate whenever the selected symbol receives a 1-minute update. The same aggregate is updated by `openTime`; clients should replace an existing chart candle when that timestamp repeats. Updates have `candlestickIsClosed: false` until the 15-minute window completes, then the final update has `candlestickIsClosed: true`.
 
 Example with curl:
 

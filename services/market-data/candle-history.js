@@ -30,7 +30,7 @@ class CandleHistory extends EventEmitter {
   }
 
   update(candle) {
-    if (candle.closed) {
+    if (candle.candlestickIsClosed) {
       delete this.current[candle.symbol];
       this.add(candle);
     } else {
@@ -77,7 +77,7 @@ class CandleHistory extends EventEmitter {
       result.push({
         symbol,
         interval: aggregation,
-        closed: complete,
+        candlestickIsClosed: complete,
         openTime,
         closeTime: openTime + targetMs - 1,
         open: group[0].open,

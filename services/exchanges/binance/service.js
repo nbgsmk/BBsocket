@@ -121,7 +121,7 @@ class BinanceSocket extends ExchangeService {
       volume: kline.v,
       quoteVolume: kline.q,
       trades: kline.n,
-      closed: kline.x === true
+      candlestickIsClosed: kline.x === true
     };
     this.history.update(candle);
   }
