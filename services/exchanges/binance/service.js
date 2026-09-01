@@ -19,10 +19,11 @@ function readConfig(configPath = CONFIG_PATH, marketType = 'coin-m') {
   if (!config || !Array.isArray(config.tickerSymbols) || config.tickerSymbols.length < 1) {
     throw new Error(configSection(marketType) + '.tickerSymbols must contain at least one symbol');
   }
-  if (marketType === 'coin-m' && config.tickerSymbols.some(symbol => !/^[A-Z0-9]+_(PERPETUAL|CURRENT_QUARTER|NEXT_QUARTER)$/.test(symbol))) {
+  config.tickerSymbols = config.tickerSymbols.map(symbol => typeof symbol === 'string' ? symbol.trim().toUpperCase() : symbol);
+  if (marketType === 'coin-m' && config.tickerSymbols.some(symbol => typeof symbol !== 'string' || !/^[A-Z0-9]+_(PERPETUAL|CURRENT_QUARTER|NEXT_QUARTER)$/.test(symbol))) {
     throw new Error('coinM.tickerSymbols must contain Coin-M continuous contracts, e.g. BTCUSD_PERPETUAL');
   }
-  if (marketType === 'usd-m' && config.tickerSymbols.some(symbol => !/^[A-Z0-9]+$/.test(symbol))) {
+  if (marketType === 'usd-m' && config.tickerSymbols.some(symbol => typeof symbol !== 'string' || !/^[A-Z0-9]+$/.test(symbol))) {
     throw new Error('usdM.tickerSymbols must contain USD-M symbols, e.g. BTCUSDT');
   }
   if (new Set(config.tickerSymbols).size !== config.tickerSymbols.length) throw new Error('tickerSymbols must be unique');
@@ -30,8 +31,8 @@ function readConfig(configPath = CONFIG_PATH, marketType = 'coin-m') {
     throw new Error(configSection(marketType) + '.host must be a non-empty hostname');
   }
   config.host = config.host.trim().toLowerCase();
-  if (!Number.isInteger(config.historyCandles) || config.historyCandles < 1) {
-    throw new Error('historyCandles must be a positive integer');
+  if (!Number.isInteger(config.maxCandlesticksInMemory) || config.maxCandlesticksInMemory < 1) {
+    throw new Error('maxCandlesticksInMemory must be a positive integer');
   }
   if (!INTERVALS.has(config.exchangeCandlestickStreamInterval)) {
     throw new Error('Unsupported Binance interval: ' + config.exchangeCandlestickStreamInterval);
@@ -63,7 +64,7 @@ class BinanceSocket extends ExchangeService {
     this.config = readConfig(this.configPath, this.marketType);
     this.WebSocket = options.WebSocket || WebSocket;
     this.socket = null;
-    this.history = new CandleHistory(this.config.historyCandles, this.config.exchangeCandlestickStreamInterval, this.config.tickerSymbols.map(symbolForStream));
+    this.history = new CandleHistory(this.config.maxCandlesticksInMemory, this.config.exchangeCandlestickStreamInterval, this.config.tickerSymbols.map(symbolForStream));
     this.reconnectTimer = null;
     this.reconnectDelay = 1000;
   }
@@ -172,7 +173,7 @@ class BinanceSocket extends ExchangeService {
       tickerSymbols: this.config.tickerSymbols,
       webSocketUrl: this.streamUrl(),
 	  exchangeCandlestickStreamInterval: this.config.exchangeCandlestickStreamInterval,
-	  historyCandles: this.config.historyCandles,
+	  maxCandlesticksInMemory: this.config.maxCandlesticksInMemory,
       candles: this.history.counts()
     };
   }

@@ -6,9 +6,9 @@
       "BTCUSD_NEXT_QUARTER",
       "ETHUSD_PERPETUAL"
     ],
-    "historyCandles": 1000,
+    "maxCandlesticksInMemory": 1000,
     "exchangeCandlestickStreamInterval": "1m",
-    "initiallyConnected": false
+    "initiallyConnected": true
   },
   "usdM": {
     "host": "dstream.binance.com",
@@ -16,7 +16,7 @@
       "BTCUSDT",
       "ETHUSDT"
     ],
-    "historyCandles": 1000,
+    "maxCandlesticksInMemory": 1000,
     "exchangeCandlestickStreamInterval": "1m",
     "initiallyConnected": false
   }

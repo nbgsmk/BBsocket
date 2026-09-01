@@ -124,14 +124,14 @@ Configuration of both Binance market types is stored in [config/binancesocket.js
   "coinM": {
     "host": "dstream.binance.com",
     "tickerSymbols": ["BTCUSD_PERPETUAL", "ETHUSD_PERPETUAL"],
-    "historyCandles": 1000,
+    "maxCandlesticksInMemory": 1000,
     "exchangeCandlestickStreamInterval": "1m",
     "initiallyConnected": true
   },
   "usdM": {
     "host": "dstream.binance.com",
     "tickerSymbols": ["BTCUSDT", "ETHUSDT"],
-    "historyCandles": 1000,
+    "maxCandlesticksInMemory": 1000,
     "exchangeCandlestickStreamInterval": "1m",
     "initiallyConnected": false
   }
@@ -148,7 +148,7 @@ Each `coinM` and `usdM` section contains:
 | --- | --- | --- | --- |
 | `host` | Binance WebSocket hostname; loaded case-insensitively and normalized to lowercase | `dstream.binance.com` | `dstream.binance.com` |
 | `tickerSymbols` | Symbols subscribed to by that market service | `BTCUSD_PERPETUAL` | `BTCUSDT` |
-| `historyCandles` | Maximum number of completed candles retained per symbol | `1000` | `1000` |
+| `maxCandlesticksInMemory` | Maximum number of completed candlesticks retained per symbol | `1000` | `1000` |
 | `exchangeCandlestickStreamInterval` | Exchange candlestick stream input interval | `1m` | `1m` |
 | `initiallyConnected` | Connect on startup and remain enabled for reconnects | `true` | `false` |
 
@@ -173,7 +173,7 @@ wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_1m/eth
 wss://dstream.binance.com/stream?streams=btcusdt@kline_1m/ethusdt@kline_1m
 ```
 
-`historyCandles` is a candle count. For example, with `historyCandles: 1000`, the service retains at most the latest 1000 completed candles, regardless of the configured interval.
+`maxCandlesticksInMemory` is a candlestick count. For example, with `maxCandlesticksInMemory: 1000`, the service retains at most the latest 1000 completed candlesticks per instrument, regardless of the configured interval.
 
 The `initiallyConnected` value is changed automatically by the connect and disconnect endpoints. The status API continues to expose the current runtime state as `connected`.
 
@@ -245,7 +245,7 @@ Example response:
   "tickerSymbols": ["BTCUSD_PERPETUAL", "ETHUSD_PERPETUAL"],
   "webSocketUrl": "wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_1m/ethusd_perpetual@continuousKline_1m",
   "exchangeCandlestickStreamInterval": "1m",
-  "historyCandles": 1000,
+  "maxCandlesticksInMemory": 1000,
   "candles": {
     "btcusd_perpetual": 42,
     "ethusd_perpetual": 41
@@ -388,7 +388,7 @@ Confirm that the Express server is running and that the browser is using the sam
 
 ### Configuration validation fails
 
-Use an uppercase continuous-contract name such as `BTCUSD_PERPETUAL`, a positive integer for `historyCandles`, and one of the supported intervals in `exchangeCandlestickStreamInterval`.
+Use an instrument name such as `BTCUSD_PERPETUAL` or `BTCUSDT`, a positive integer for `maxCandlesticksInMemory`, and one of the supported intervals in `exchangeCandlestickStreamInterval`.
 
 ## Security and deployment notes
 
