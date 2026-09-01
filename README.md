@@ -234,17 +234,17 @@ Example response:
 ### Candles
 
 ```text
-GET /api/v1/binance/candles/btcusd
-GET /api/v1/binance/candles/ethusd?limit=100
-GET /api/v1/binance/candles/btcusd?aggregation=5m&limit=100
-GET /api/v1/binance/candles/btcusd?aggregation=15m&includeIncomplete=true
+GET /api/v1/binance/candles/btcusd/snapshot
+GET /api/v1/binance/candles/ethusd/snapshot?limit=100
+GET /api/v1/binance/candles/btcusd/snapshot?aggregation=5m&limit=100
+GET /api/v1/binance/candles/btcusd/snapshot?aggregation=15m&includeIncomplete=true
 ```
 
-The path uses the public symbol portion of any configured continuous contract, lowercased. For `BTCUSD_PERPETUAL`, use `/api/v1/binance/candles/btcusd`; for `ETHUSD_PERPETUAL`, use `/api/v1/binance/candles/ethusd`.
+The path uses the public symbol portion of any configured continuous contract, lowercased. For `BTCUSD_PERPETUAL`, use `/api/v1/binance/candles/btcusd/snapshot`; for `ETHUSD_PERPETUAL`, use `/api/v1/binance/candles/ethusd/snapshot`.
 
 The optional `limit` parameter returns the newest requested number of candles. It must be a positive integer. The result can never contain more candles than are currently retained in memory.
 
-The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. For example, `GET /api/v1/binance/candles/btcusd?aggregation=5m` combines five closed 1-minute candles into each 5-minute candle. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of `exchangeCandlestickStreamInterval`; calendar-month aggregation (`1M`) is not supported. The application also supports the custom local aggregation intervals `2m`, `10m`, `20m`, `2d`, `4d`, and `5d`. These are calculated from the stored 1-minute candles and are not Binance-native stream intervals.
+The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. For example, `GET /api/v1/binance/candles/btcusd/snapshot?aggregation=5m` combines five closed 1-minute candles into each 5-minute candle. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of `exchangeCandlestickStreamInterval`; calendar-month aggregation (`1M`) is not supported. The application also supports the custom local aggregation intervals `2m`, `10m`, `20m`, `2d`, `4d`, and `5d`. These are calculated from the stored 1-minute candles and are not Binance-native stream intervals.
 
 Set `includeIncomplete=true` to include the current in-progress aggregate in the HTTP snapshot. It is marked with `candlestickIsClosed: false` and is built from the latest live 1-minute update. It is not added to completed history.
 

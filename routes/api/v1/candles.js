@@ -2,7 +2,7 @@ const express = require('express');
 
 module.exports = function createCandleRoutes(service) {
   const router = express.Router();
-  router.get('/:symbol', (req, res) => {
+  router.get('/:symbol/snapshot', (req, res) => {
     const requested = req.params.symbol.toLowerCase();
     const configured = service.status().tickerSymbols.map(symbol => symbol.split('_')[0].toLowerCase());
     if (!configured.includes(requested)) return res.status(404).json({ error: 'Symbol is not configured' });
