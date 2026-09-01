@@ -16,6 +16,21 @@ The Binance implementation and shared market-data foundation are complete. The n
 - The optional Playwright browser test requires Chromium to be installed.
 - WebStorm’s bundled Node runtime can be used if `node` is not available on the terminal `PATH`.
 
+## AI-assisted development setting
+
+This project has been developed with JetBrains Webstorm 2026.2.1 and the following AI coding agent context:
+
+| Item      | Value |
+|-----------|-----|
+| Agent     | Codex |
+| Agent mode | "Agent" |
+| Collaboration mode | "Default" = "Plan" |
+| Fast mode | Off |
+| LLM model | GPT-5.6 Luna |
+| Reasoning | Medium |
+
+
+
 Run verification from WebStorm’s terminal:
 
 ```bash
