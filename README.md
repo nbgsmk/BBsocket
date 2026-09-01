@@ -284,6 +284,14 @@ GET /api/v1/binance/candles/btcusd/live?aggregation=15m
 
 This keeps an SSE connection open and sends the newest aggregate whenever the selected symbol receives a 1-minute update. The same aggregate is updated by `openTime`; clients should replace an existing chart candle when that timestamp repeats. Updates have `candlestickIsClosed: false` until the 15-minute window completes, then the final update has `candlestickIsClosed: true`.
 
+To receive only one event per completed aggregate, set `includeIncomplete=false`:
+
+```text
+GET /api/v1/binance/candles/btcusd/live?aggregation=15m&includeIncomplete=false
+```
+
+This mode suppresses the initial snapshot and all in-progress updates. It emits one event when each new aggregated candle closes and ignores duplicate close updates.
+
 Example with curl:
 
 ```bash
