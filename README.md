@@ -122,12 +122,14 @@ Configuration of both Binance market types is stored in [config/binancesocket.js
 ```json
 {
   "coinM": {
+    "host": "dstream.binance.com",
     "tickerSymbols": ["BTCUSD_PERPETUAL", "ETHUSD_PERPETUAL"],
     "historyCandles": 1000,
     "exchangeCandlestickStreamInterval": "1m",
     "initiallyConnected": true
   },
   "usdM": {
+    "host": "dstream.binance.com",
     "tickerSymbols": ["BTCUSDT", "ETHUSDT"],
     "historyCandles": 1000,
     "exchangeCandlestickStreamInterval": "1m",
@@ -144,6 +146,7 @@ Each `coinM` and `usdM` section contains:
 
 | Field | Description | Coin-M example | USD-M example |
 | --- | --- | --- | --- |
+| `host` | Binance WebSocket hostname; loaded case-insensitively and normalized to lowercase | `dstream.binance.com` | `dstream.binance.com` |
 | `tickerSymbols` | Symbols subscribed to by that market service | `BTCUSD_PERPETUAL` | `BTCUSDT` |
 | `historyCandles` | Maximum number of completed candles retained per symbol | `1000` | `1000` |
 | `exchangeCandlestickStreamInterval` | Exchange candlestick stream input interval | `1m` | `1m` |

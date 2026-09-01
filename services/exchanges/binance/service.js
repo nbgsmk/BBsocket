@@ -26,6 +26,10 @@ function readConfig(configPath = CONFIG_PATH, marketType = 'coin-m') {
     throw new Error('usdM.tickerSymbols must contain USD-M symbols, e.g. BTCUSDT');
   }
   if (new Set(config.tickerSymbols).size !== config.tickerSymbols.length) throw new Error('tickerSymbols must be unique');
+  if (typeof config.host !== 'string' || !config.host.trim()) {
+    throw new Error(configSection(marketType) + '.host must be a non-empty hostname');
+  }
+  config.host = config.host.trim().toLowerCase();
   if (!Number.isInteger(config.historyCandles) || config.historyCandles < 1) {
     throw new Error('historyCandles must be a positive integer');
   }
@@ -66,9 +70,8 @@ class BinanceSocket extends ExchangeService {
 
   streamUrl() {
     const streamName = this.marketType === 'coin-m' ? 'continuousKline' : 'kline';
-    const host = 'dstream.binance.com';
     const streams = this.config.tickerSymbols.map(symbol => symbolForStream(symbol) + '@' + streamName + '_' + this.config.exchangeCandlestickStreamInterval);
-    return 'wss://' + host + '/stream?streams=' + streams.join('/');
+    return 'wss://' + this.config.host + '/stream?streams=' + streams.join('/');
   }
 
   connect() {

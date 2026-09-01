@@ -1,5 +1,6 @@
 {
   "coinM": {
+    "host": "dstream.binance.com",
     "tickerSymbols": [
       "BTCUSD_PERPETUAL",
       "BTCUSD_NEXT_QUARTER",
@@ -10,6 +11,7 @@
     "initiallyConnected": false
   },
   "usdM": {
+    "host": "dstream.binance.com",
     "tickerSymbols": [
       "BTCUSDT",
       "ETHUSDT"
