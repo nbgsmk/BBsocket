@@ -47,6 +47,13 @@ test('normalizes the configured host to lowercase', () => {
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
+test('accepts case-insensitive string connection states', () => {
+  const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', initiallyConnected: 'FALSE' } });
+  const service = new BinanceSocket({ configPath, marketType: 'usd-m' });
+  assert.equal(service.config.initiallyConnected, false);
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
 test('implements the common exchange service interface', () => {
   const { configPath, directory } = tempConfig();
   const service = new BinanceSocket({ configPath });

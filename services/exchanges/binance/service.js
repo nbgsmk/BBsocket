@@ -37,7 +37,15 @@ function readConfig(configPath = CONFIG_PATH, marketType = 'coin-m') {
   if (!INTERVALS.has(config.exchangeCandlestickStreamInterval)) {
     throw new Error('Unsupported Binance interval: ' + config.exchangeCandlestickStreamInterval);
   }
-  config.initiallyConnected = config.initiallyConnected === true;
+  if (typeof config.initiallyConnected === 'string') {
+    const connectionState = config.initiallyConnected.trim().toLowerCase();
+    if (connectionState !== 'true' && connectionState !== 'false') {
+      throw new Error(configSection(marketType) + '.initiallyConnected must be true or false');
+    }
+    config.initiallyConnected = connectionState === 'true';
+  } else {
+    config.initiallyConnected = config.initiallyConnected === true;
+  }
   return config;
 }
 
