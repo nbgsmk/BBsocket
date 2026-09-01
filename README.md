@@ -333,6 +333,58 @@ GET /api/v1/binance/coin-m/candles/live?instrument=btcusd_perpetual&aggregation=
 
 This mode suppresses the initial snapshot and all in-progress updates. It emits one event when each new aggregated candle closes and ignores duplicate close updates.
 
+### Planned indicators to be emitted with live events
+
+The planned indicator extension keeps `/candles/live` as the single SSE endpoint and requests calculated indicators with an optional `indicators` parameter:
+
+```text
+GET /api/v1/binance/usd-m/candles/live?instrument=btcusdt&aggregation=15m&indicators=sma:20,ema:50
+```
+
+The parameter is a comma-separated list of indicator specifications. Each specification contains an indicator type and period separated by a colon:
+
+```text
+indicators=sma:20,sma:50,ema:20
+```
+
+The planned combined event format is:
+
+```json
+{
+  "eventType": "candlestickUpdate",
+  "exchange": "binance",
+  "marketType": "usd-m",
+  "instrument": "btcusdt",
+  "aggregation": "15m",
+  "openTime": 1720000000000,
+  "closeTime": 1720000899999,
+  "candlestickIsClosed": false,
+  "candlestick": {
+    "open": "60000",
+    "high": "60100",
+    "low": "59900",
+    "close": "60050",
+    "volume": "125.5"
+  },
+  "indicators": [
+    {
+      "type": "sma",
+      "period": 20,
+      "value": "59875.42"
+    },
+    {
+      "type": "ema",
+      "period": 50,
+      "value": "59720.18"
+    }
+  ]
+}
+```
+
+This is a design specification; indicator parameters are not implemented yet. Indicator values correlate with candles through `instrument`, `aggregation`, and `openTime`, rather than array position. When there is insufficient history for a requested period, its `value` will be `null`. Repeated events with the same `openTime` represent updates to the same live candle. The final event for that candle has `candlestickIsClosed: true`.
+
+When `indicators` is omitted, the existing candle-only live-event behavior remains unchanged. The same request syntax and response structure are intended for Coin-M and USD-M services.
+
 Example with curl:
 
 ```bash
