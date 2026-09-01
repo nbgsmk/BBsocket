@@ -6,11 +6,24 @@ const CandleHistory = require('../../market-data/candle-history');
 
 const CONFIG_PATH = path.join(__dirname, '..', '..', '..', 'config', 'binancesocket.json');
 const INTERVALS = new Set(['1s', '1m', '2m', '3m', '5m', '10m', '15m', '20m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '2d', '3d', '4d', '5d', '1w', '1M']);
+const MARKET_TYPES = new Set(['coin-m', 'usd-m']);
 
-function readConfig(configPath = CONFIG_PATH) {
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  if (!Array.isArray(config.tickerSymbols) || config.tickerSymbols.length < 1 || config.tickerSymbols.some(symbol => !/^[A-Z0-9]+_(PERPETUAL|CURRENT_QUARTER|NEXT_QUARTER)$/.test(symbol))) {
-    throw new Error('tickerSymbols must contain Coin-M continuous contracts, e.g. BTCUSD_PERPETUAL');
+function configSection(marketType) {
+  return marketType === 'usd-m' ? 'usdM' : 'coinM';
+}
+
+function readConfig(configPath = CONFIG_PATH, marketType = 'coin-m') {
+  if (!MARKET_TYPES.has(marketType)) throw new Error('Unsupported Binance market type: ' + marketType);
+  const rootConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const config = rootConfig[configSection(marketType)];
+  if (!config || !Array.isArray(config.tickerSymbols) || config.tickerSymbols.length < 1) {
+    throw new Error(configSection(marketType) + '.tickerSymbols must contain at least one symbol');
+  }
+  if (marketType === 'coin-m' && config.tickerSymbols.some(symbol => !/^[A-Z0-9]+_(PERPETUAL|CURRENT_QUARTER|NEXT_QUARTER)$/.test(symbol))) {
+    throw new Error('coinM.tickerSymbols must contain Coin-M continuous contracts, e.g. BTCUSD_PERPETUAL');
+  }
+  if (marketType === 'usd-m' && config.tickerSymbols.some(symbol => !/^[A-Z0-9]+$/.test(symbol))) {
+    throw new Error('usdM.tickerSymbols must contain USD-M symbols, e.g. BTCUSDT');
   }
   if (new Set(config.tickerSymbols).size !== config.tickerSymbols.length) throw new Error('tickerSymbols must be unique');
   if (!Number.isInteger(config.historyCandles) || config.historyCandles < 1) {
@@ -34,14 +47,16 @@ function symbolForStream(tickerSymbol) {
 }
 
 function publicSymbol(tickerSymbol) {
-  return tickerSymbol.split('_')[0].toLowerCase();
+  return tickerSymbol.includes('_') ? tickerSymbol.split('_')[0].toLowerCase() : tickerSymbol.toLowerCase();
 }
 
 class BinanceSocket extends ExchangeService {
   constructor(options = {}) {
     super();
+    this.marketType = options.marketType || 'coin-m';
+    if (!MARKET_TYPES.has(this.marketType)) throw new Error('Unsupported Binance market type: ' + this.marketType);
     this.configPath = options.configPath || CONFIG_PATH;
-    this.config = readConfig(this.configPath);
+    this.config = readConfig(this.configPath, this.marketType);
     this.WebSocket = options.WebSocket || WebSocket;
     this.socket = null;
     this.history = new CandleHistory(this.config.historyCandles, this.config.exchangeCandlestickStreamInterval, this.config.tickerSymbols.map(symbolForStream));
@@ -50,17 +65,19 @@ class BinanceSocket extends ExchangeService {
   }
 
   streamUrl() {
-    const streams = this.config.tickerSymbols.map(symbol => symbolForStream(symbol) + '@continuousKline_' + this.config.exchangeCandlestickStreamInterval);
-    return 'wss://dstream.binance.com/stream?streams=' + streams.join('/');
+    const streamName = this.marketType === 'coin-m' ? 'continuousKline' : 'kline';
+    const host = 'dstream.binance.com';
+    const streams = this.config.tickerSymbols.map(symbol => symbolForStream(symbol) + '@' + streamName + '_' + this.config.exchangeCandlestickStreamInterval);
+    return 'wss://' + host + '/stream?streams=' + streams.join('/');
   }
 
   connect() {
     if (this.socket && (this.socket.readyState === this.WebSocket.OPEN || this.socket.readyState === this.WebSocket.CONNECTING)) {
       return;
     }
-    this.config = readConfig(this.configPath);
+    this.config = readConfig(this.configPath, this.marketType);
     this.config.initiallyConnected = true;
-    writeConfig(this.config, this.configPath);
+    this.persistConfig();
     this.openSocket();
   }
 
@@ -87,9 +104,9 @@ class BinanceSocket extends ExchangeService {
   }
 
   disconnect() {
-    this.config = readConfig(this.configPath);
+    this.config = readConfig(this.configPath, this.marketType);
     this.config.initiallyConnected = false;
-    writeConfig(this.config, this.configPath);
+    this.persistConfig();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -99,6 +116,12 @@ class BinanceSocket extends ExchangeService {
       this.socket = null;
       socket.close();
     }
+  }
+
+  persistConfig() {
+    const rootConfig = JSON.parse(fs.readFileSync(this.configPath, 'utf8'));
+    rootConfig[configSection(this.marketType)] = this.config;
+    writeConfig(rootConfig, this.configPath);
   }
 
   handleMessage(rawMessage) {
@@ -141,6 +164,7 @@ class BinanceSocket extends ExchangeService {
   status() {
     return {
       connected: this.config.initiallyConnected,
+      marketType: this.marketType,
       socketOpen: Boolean(this.socket && this.socket.readyState === this.WebSocket.OPEN),
       tickerSymbols: this.config.tickerSymbols,
       webSocketUrl: this.streamUrl(),

@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 
 router.get('/', (req, res) => {
-  res.render('dashboard', { title: 'Binance Socket Dashboard' });
+  res.render('dashboard', { title: 'Binance Futures Socket Dashboard' });
 });
 
 module.exports = router;

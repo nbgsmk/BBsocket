@@ -1,13 +1,13 @@
-# Binance Coin-M Futures WebSocket Service
+# Binance Futures WebSocket Service
 
-This is a node.js Express application that connects to Binance Coin-M Futures continuous-contract WebSocket streams (1 second update), keeps closed candlesticks in memory, and exposes them through HTTP and a browser dashboard.
+This is a Node.js Express application that connects to Binance Coin-M and USD-M Futures WebSocket streams, keeps closed candlesticks in memory, and exposes them through HTTP and a browser dashboard.
 
 ## Current project status
 
 The Binance implementation and shared market-data foundation are complete. The next planned feature is a real Deribit exchange adapter.
 
 - Service, configuration, APIs, dashboard, live SSE feed, JSON formatting toggle, and documentation are implemented.
-- Binance supports multiple symbols over one combined 1-minute candlestick stream.
+- Binance supports multiple Coin-M and USD-M symbols over separate combined streams.
 - Shared candle history and aggregation are implemented in `services/market-data/candle-history.js`.
 - Versioned Binance endpoints are under `/api/v1/binance`.
 - Normalized candles use `candlestickIsClosed` to distinguish completed and incomplete data.
@@ -28,7 +28,7 @@ The browser test expects the application to be running at `http://127.0.0.1:3000
 
 ## Features
 
-- Binance Coin-M continuous-contract candlestick streams.
+- Binance Coin-M continuous-contract and USD-M candlestick streams.
 - Configurable contract symbols, exchange stream interval, and history size.
 - Closed candlesticks only (`k.x === true`) are stored and returned to the calling browser.
 - In-memory retention based on a configurable number of candles per symbol.
@@ -85,7 +85,7 @@ GET /api/v1/markets/candles?markets=binance:btcusd,deribit:btc-perpetual&aggrega
 
 Aggregation would apply consistently to every requested market, and `limit` would apply per symbol. Results would remain grouped because exchange symbols and instrument names may differ. If one exchange is unavailable, the response should return the other exchange’s data and report a per-market error rather than failing the entire request.
 
-Exchange connection control would remain exchange-specific, for example `/api/v1/binance/connect` and `/api/v1/deribit/connect`.
+Exchange connection control would remain exchange-specific, for example `/api/v1/binance/coin-m/connect` and `/api/v1/deribit/connect`.
 
 ## Requirements
 
@@ -117,17 +117,22 @@ PORT=8080 npm start
 
 - ( Check the original Binance documentation for the [continuous-contract kline stream](https://binance-docs.github.io/apidocs/spot/en/#continuous-contract-kline-candlestick-streams) )
 
-Configuration of this server is stored in [config/binancesocket.json](config/binancesocket.json):
+Configuration of both Binance market types is stored in [config/binancesocket.json](config/binancesocket.json):
 
 ```json
 {
-  "tickerSymbols": [
-    "BTCUSD_PERPETUAL",
-    "ETHUSD_PERPETUAL"
-  ],
-  "historyCandles": 1000,
-  "exchangeCandlestickStreamInterval": "1m",
-  "initiallyConnected": false
+  "coinM": {
+    "tickerSymbols": ["BTCUSD_PERPETUAL", "ETHUSD_PERPETUAL"],
+    "historyCandles": 1000,
+    "exchangeCandlestickStreamInterval": "1m",
+    "initiallyConnected": true
+  },
+  "usdM": {
+    "tickerSymbols": ["BTCUSDT", "ETHUSDT"],
+    "historyCandles": 1000,
+    "exchangeCandlestickStreamInterval": "1m",
+    "initiallyConnected": false
+  }
 }
 ```
 
@@ -135,23 +140,34 @@ Configuration of this server is stored in [config/binancesocket.json](config/bin
 
 | Field | Description | Example |
 | --- | --- | --- |
-| `tickerSymbols` | Binance Coin-M continuous contracts | `["BTCUSD_PERPETUAL", "ETHUSD_PERPETUAL"]` |
-| `historyCandles` | Maximum number of completed candles to retain in memory | `1000` |
-| `exchangeCandlestickStreamInterval` | Exchange candlestick stream input interval | `1m` |
-| `initiallyConnected` | Whether the service should connect on startup and remain enabled for reconnects | `true` |
+Each `coinM` and `usdM` section contains:
+
+| Field | Description | Coin-M example | USD-M example |
+| --- | --- | --- | --- |
+| `tickerSymbols` | Symbols subscribed to by that market service | `BTCUSD_PERPETUAL` | `BTCUSDT` |
+| `historyCandles` | Maximum number of completed candles retained per symbol | `1000` | `1000` |
+| `exchangeCandlestickStreamInterval` | Exchange candlestick stream input interval | `1m` | `1m` |
+| `initiallyConnected` | Connect on startup and remain enabled for reconnects | `true` | `false` |
 
 Supported exchange stream intervals include `1s`, `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `6h`, `8h`, `12h`, `1d`, `3d`, `1w`, and `1M`.
 
-For a continuous contract, the WebSocket URL is generated as:
+Coin-M continuous-contract URLs are generated as:
 
 ```text
 wss://dstream.binance.com/stream?streams={symbol1}@continuousKline_{interval}/{symbol2}@continuousKline_{interval}
 ```
 
-For the default configuration:
+USD-M uses the ordinary kline stream on the same `dstream.binance.com` host:
+
+```text
+wss://dstream.binance.com/stream?streams={symbol1}@kline_{interval}/{symbol2}@kline_{interval}
+```
+
+For the example configuration:
 
 ```text
 wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_1m/ethusd_perpetual@continuousKline_1m
+wss://dstream.binance.com/stream?streams=btcusdt@kline_1m/ethusdt@kline_1m
 ```
 
 `historyCandles` is a candle count. For example, with `historyCandles: 1000`, the service retains at most the latest 1000 completed candles, regardless of the configured interval.
@@ -191,8 +207,10 @@ Open [http://localhost:3000/dashboard](http://localhost:3000/dashboard) in a bro
 ### Connect
 
 ```text
-GET  /binance/connect
-POST /binance/connect
+GET  /api/v1/binance/coin-m/connect
+POST /api/v1/binance/coin-m/connect
+GET  /api/v1/binance/usd-m/connect
+POST /api/v1/binance/usd-m/connect
 ```
 
 Enables the service, persists `initiallyConnected: true`, and opens the Binance WebSocket connection. The GET form is provided for convenient use from a browser address bar.
@@ -200,8 +218,10 @@ Enables the service, persists `initiallyConnected: true`, and opens the Binance 
 ### Disconnect
 
 ```text
-GET  /binance/disconnect
-POST /binance/disconnect
+GET  /api/v1/binance/coin-m/disconnect
+POST /api/v1/binance/coin-m/disconnect
+GET  /api/v1/binance/usd-m/disconnect
+POST /api/v1/binance/usd-m/disconnect
 ```
 
 Disables the service, persists `initiallyConnected: false`, cancels pending reconnects, and closes the active WebSocket.
@@ -209,7 +229,8 @@ Disables the service, persists `initiallyConnected: false`, cancels pending reco
 ### Status
 
 ```text
-GET /api/v1/binance/status
+GET /api/v1/binance/coin-m/status
+GET /api/v1/binance/usd-m/status
 ```
 
 Example response:
@@ -234,17 +255,17 @@ Example response:
 ### Candles
 
 ```text
-GET /api/v1/binance/futures/candles/snapshot?instrument=btcusd_perpetual
-GET /api/v1/binance/futures/candles/snapshot?instrument=ethusd_perpetual&limit=100
-GET /api/v1/binance/futures/candles/snapshot?instrument=btcusd_perpetual&aggregation=5m&limit=100
-GET /api/v1/binance/futures/candles/snapshot?instrument=btcusd_perpetual&aggregation=15m&includeIncomplete=true
+GET /api/v1/binance/coin-m/candles/snapshot?instrument=btcusd_perpetual
+GET /api/v1/binance/coin-m/candles/snapshot?instrument=ethusd_perpetual&limit=100
+GET /api/v1/binance/coin-m/candles/snapshot?instrument=btcusd_perpetual&aggregation=5m&limit=100
+GET /api/v1/binance/usd-m/candles/snapshot?instrument=btcusdt&aggregation=15m&includeIncomplete=true
 ```
 
-The `instrument` query parameter must contain the full configured continuous-contract identifier, lowercased in the URL. For `BTCUSD_PERPETUAL`, use `instrument=btcusd_perpetual`; for `ETHUSD_PERPETUAL`, use `instrument=ethusd_perpetual`.
+The `instrument` query parameter must contain the full configured instrument, lowercased in the URL. Coin-M uses names such as `instrument=btcusd_perpetual`; USD-M uses names such as `instrument=btcusdt`.
 
 The optional `limit` parameter returns the newest requested number of candles. It must be a positive integer. The result can never contain more candles than are currently retained in memory.
 
-The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. For example, `GET /api/v1/binance/futures/candles/snapshot?instrument=btcusd_perpetual&aggregation=5m` combines five closed 1-minute candles into each 5-minute candle. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of `exchangeCandlestickStreamInterval`; calendar-month aggregation (`1M`) is not supported. The application also supports the custom local aggregation intervals `2m`, `10m`, `20m`, `2d`, `4d`, and `5d`. These are calculated from the stored 1-minute candles and are not Binance-native stream intervals.
+The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of the selected service's `exchangeCandlestickStreamInterval`; calendar-month aggregation (`1M`) is not supported. The custom local intervals `2m`, `10m`, `20m`, `2d`, `4d`, and `5d` are also supported.
 
 Set `includeIncomplete=true` to include the current in-progress aggregate in the HTTP snapshot. It is marked with `candlestickIsClosed: false` and is built from the latest live 1-minute update. It is not added to completed history.
 
@@ -272,7 +293,8 @@ Only Binance messages whose kline close flag is true are included. The service d
 ### Live socket data
 
 ```text
-GET /api/v1/binance/live
+GET /api/v1/binance/coin-m/live
+GET /api/v1/binance/usd-m/live
 ```
 
 This is a Server-Sent Events endpoint. It forwards incoming Binance WebSocket messages to connected browser clients, including updates for candles that are not yet closed. Each event is sent as a JSON `data:` field.
@@ -280,7 +302,7 @@ This is a Server-Sent Events endpoint. It forwards incoming Binance WebSocket me
 For server-aggregated live candles, use:
 
 ```text
-GET /api/v1/binance/futures/candles/live?instrument=btcusd_perpetual&aggregation=15m
+GET /api/v1/binance/coin-m/candles/live?instrument=btcusd_perpetual&aggregation=15m
 ```
 
 This keeps an SSE connection open and sends the newest aggregate whenever the selected symbol receives a 1-minute update. The same aggregate is updated by `openTime`; clients should replace an existing chart candle when that timestamp repeats. Updates have `candlestickIsClosed: false` until the 15-minute window completes, then the final update has `candlestickIsClosed: true`.
@@ -288,7 +310,7 @@ This keeps an SSE connection open and sends the newest aggregate whenever the se
 To receive only one event per completed aggregate, set `includeIncomplete=false`:
 
 ```text
-GET /api/v1/binance/futures/candles/live?instrument=btcusd_perpetual&aggregation=15m&includeIncomplete=false
+GET /api/v1/binance/coin-m/candles/live?instrument=btcusd_perpetual&aggregation=15m&includeIncomplete=false
 ```
 
 This mode suppresses the initial snapshot and all in-progress updates. It emits one event when each new aggregated candle closes and ignores duplicate close updates.
@@ -296,7 +318,7 @@ This mode suppresses the initial snapshot and all in-progress updates. It emits 
 Example with curl:
 
 ```bash
-curl -N http://localhost:3000/api/v1/binance/live
+curl -N http://localhost:3000/api/v1/binance/coin-m/live
 ```
 
 The dashboard keeps the most recent 300 live messages in browser memory and displays them in a scrollable field. The formatting toggle switches between formatted JSON and normalized single-line JSON.

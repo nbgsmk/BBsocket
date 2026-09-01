@@ -11,7 +11,8 @@ var createApiV1Routes = require('./routes/api/v1');
 var dashboardRouter = require('./routes/dashboard');
 
 var app = express();
-var binanceSocket = new BinanceSocket();
+var binanceCoinMSocket = new BinanceSocket({ marketType: 'coin-m' });
+var binanceUsdMSocket = new BinanceSocket({ marketType: 'usd-m' });
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -26,9 +27,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/dashboard', dashboardRouter);
 app.use('/users', usersRouter);
-app.use('/api/v1', createApiV1Routes(binanceSocket));
+app.use('/api/v1', createApiV1Routes({ coinM: binanceCoinMSocket, usdM: binanceUsdMSocket }));
 
-if (binanceSocket.config.initiallyConnected) binanceSocket.connect();
+if (binanceCoinMSocket.config.initiallyConnected) binanceCoinMSocket.connect();
+if (binanceUsdMSocket.config.initiallyConnected) binanceUsdMSocket.connect();
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

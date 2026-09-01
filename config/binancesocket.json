@@ -1,10 +1,21 @@
 {
-  "tickerSymbols": [
-    "BTCUSD_PERPETUAL",
-    "BTCUSD_NEXT_QUARTER",
-    "ETHUSD_PERPETUAL"
-  ],
-  "historyCandles": 1000,
-  "exchangeCandlestickStreamInterval": "1m",
-  "initiallyConnected": true
+  "coinM": {
+    "tickerSymbols": [
+      "BTCUSD_PERPETUAL",
+      "BTCUSD_NEXT_QUARTER",
+      "ETHUSD_PERPETUAL"
+    ],
+    "historyCandles": 1000,
+    "exchangeCandlestickStreamInterval": "1m",
+    "initiallyConnected": false
+  },
+  "usdM": {
+    "tickerSymbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "historyCandles": 1000,
+    "exchangeCandlestickStreamInterval": "1m",
+    "initiallyConnected": false
+  }
 }

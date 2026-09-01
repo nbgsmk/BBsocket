@@ -18,7 +18,12 @@
   <body>
     <main>
       <h1><%= title %></h1>
-      <p>Control the Binance Coin-M WebSocket connection.</p>
+      <p>Control a Binance futures WebSocket connection.</p>
+      <label for="market-type">Market type: </label>
+      <select id="market-type">
+        <option value="coin-m">Coin-M</option>
+        <option value="usd-m">USD-M</option>
+      </select>
       <p><strong>WebSocket URL:</strong> <code id="websocket-url">Loading...</code></p>
       <button type="button" data-action="connect">/connect</button>
       <button type="button" data-action="disconnect">/disconnect</button>
@@ -43,9 +48,21 @@
       const websocketUrl = document.getElementById('websocket-url');
       const formatLabel = document.getElementById('format-label');
       const message = document.getElementById('message');
+      const marketType = document.getElementById('market-type');
       let liveSource = null;
       const liveHistory = [];
       const maxLiveEntries = 300;
+
+      function apiPath(action) {
+        return '/api/v1/binance/' + marketType.value + '/' + action;
+      }
+
+      function stopLiveData(messageText = 'Live data is disabled.') {
+        if (liveSource) liveSource.close();
+        liveSource = null;
+        liveToggle.textContent = 'Enable live data';
+        liveResponse.textContent = messageText;
+      }
 
       function renderLiveData() {
         if (!liveHistory.length) return;
@@ -59,7 +76,7 @@
         message.textContent = '';
         response.textContent = 'Loading...';
         try {
-          const result = await fetch('/api/v1/binance/' + action);
+          const result = await fetch(apiPath(action));
           const body = await result.json();
           if (!result.ok) throw new Error(body.error || 'Request failed');
           if (body.webSocketUrl) websocketUrl.textContent = body.webSocketUrl;
@@ -78,15 +95,12 @@
 
       liveToggle.addEventListener('click', () => {
         if (liveSource) {
-          liveSource.close();
-          liveSource = null;
-          liveToggle.textContent = 'Enable live data';
-          liveResponse.textContent = 'Live data is disabled.';
+          stopLiveData();
           return;
         }
 
         liveResponse.textContent = 'Waiting for socket data...';
-        liveSource = new EventSource('/api/v1/binance/live');
+        liveSource = new EventSource(apiPath('live'));
         liveSource.onmessage = event => {
           try {
             liveHistory.push({ raw: event.data, parsed: JSON.parse(event.data) });
@@ -98,13 +112,17 @@
         };
         liveSource.onerror = () => {
           if (liveSource) {
-            liveSource.close();
-          liveSource = null;
-          liveToggle.textContent = 'Enable live data';
-          liveResponse.textContent = 'Live data connection lost.';
-        }
-      };
+            stopLiveData('Live data connection lost.');
+          }
+        };
         liveToggle.textContent = 'Disable live data';
+      });
+
+      marketType.addEventListener('change', () => {
+        stopLiveData('Live data is disabled.');
+        liveHistory.length = 0;
+        liveResponse.textContent = 'Live data is disabled.';
+        callService('status');
       });
 
       formatToggle.addEventListener('change', () => {
