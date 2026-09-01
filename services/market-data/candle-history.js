@@ -20,22 +20,24 @@ class CandleHistory extends EventEmitter {
   }
 
   add(candle) {
-    this.ensureSymbol(candle.symbol);
-    const history = this.histories[candle.symbol];
+    const key = candle.instrument || candle.symbol;
+    this.ensureSymbol(key);
+    const history = this.histories[key];
     const existing = history.findIndex(item => item.openTime === candle.openTime);
     if (existing >= 0) history[existing] = candle;
     else history.push(candle);
     history.sort((a, b) => a.openTime - b.openTime);
-    if (history.length > this.maxCandles) this.histories[candle.symbol] = history.slice(-this.maxCandles);
+    if (history.length > this.maxCandles) this.histories[key] = history.slice(-this.maxCandles);
   }
 
   update(candle) {
     if (candle.candlestickIsClosed) {
-      delete this.current[candle.symbol];
+      delete this.current[candle.instrument || candle.symbol];
       this.add(candle);
     } else {
-      this.ensureSymbol(candle.symbol);
-      this.current[candle.symbol] = candle;
+      const key = candle.instrument || candle.symbol;
+      this.ensureSymbol(key);
+      this.current[key] = candle;
     }
     this.emit('candle', candle);
   }
@@ -75,7 +77,8 @@ class CandleHistory extends EventEmitter {
       const incomplete = includeIncomplete && this.current[symbol] && group.some(candle => candle.openTime === this.current[symbol].openTime) && contiguous && openTime + targetMs > Date.now();
       if ((!complete && !incomplete) || (complete && openTime + targetMs > Date.now())) return result;
       result.push({
-        symbol,
+        symbol: group[0].symbol || symbol,
+        instrument: group[0].instrument,
         interval: aggregation,
         candlestickIsClosed: complete,
         openTime,

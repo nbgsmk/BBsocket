@@ -23,12 +23,12 @@ function serviceStub() {
 test('returns status and configured candles with limit validation', async () => {
   const response = await supertest(createTestApp(serviceStub())).get('/api/v1/binance/status').expect(200);
   assert.deepEqual(response.body.tickerSymbols, ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL']);
-  await supertest(createTestApp(serviceStub())).get('/api/v1/binance/candles/btcusd/snapshot?limit=1').expect(200).then(result => {
+  await supertest(createTestApp(serviceStub())).get('/api/v1/binance/futures/candles/snapshot?instrument=btcusd_perpetual&limit=1').expect(200).then(result => {
     assert.equal(result.body.length, 1);
   });
-  await supertest(createTestApp(serviceStub())).get('/api/v1/binance/candles/btcusd/snapshot?limit=nope').expect(400);
-  await supertest(createTestApp(serviceStub())).get('/api/v1/binance/candles/ltcusd/snapshot').expect(404);
-  await supertest(createTestApp(serviceStub())).get('/api/v1/binance/candles/btcusd').expect(404);
+  await supertest(createTestApp(serviceStub())).get('/api/v1/binance/futures/candles/snapshot?instrument=btcusd_perpetual&limit=nope').expect(400);
+  await supertest(createTestApp(serviceStub())).get('/api/v1/binance/futures/candles/snapshot?instrument=ltcusd_perpetual').expect(404);
+  await supertest(createTestApp(serviceStub())).get('/api/v1/binance/futures/candles/btcusd').expect(404);
 });
 
 test('exposes an SSE live endpoint and forwards socket messages', async () => {

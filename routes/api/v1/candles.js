@@ -2,9 +2,9 @@ const express = require('express');
 
 module.exports = function createCandleRoutes(service) {
   const router = express.Router();
-  router.get('/:symbol/snapshot', (req, res) => {
-    const requested = req.params.symbol.toLowerCase();
-    const configured = service.status().tickerSymbols.map(symbol => symbol.split('_')[0].toLowerCase());
+  router.get('/snapshot', (req, res) => {
+    const requested = String(req.query.instrument || '').toLowerCase();
+    const configured = service.status().tickerSymbols.map(symbol => symbol.toLowerCase());
     if (!configured.includes(requested)) return res.status(404).json({ error: 'Symbol is not configured' });
     const limit = req.query.limit === undefined ? undefined : Number(req.query.limit);
     if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) return res.status(400).json({ error: 'limit must be a positive integer' });
@@ -17,9 +17,9 @@ module.exports = function createCandleRoutes(service) {
     } catch (error) { res.status(400).json({ error: error.message }); }
   });
 
-  router.get('/:symbol/live', (req, res) => {
-    const requested = req.params.symbol.toLowerCase();
-    const configured = service.status().tickerSymbols.map(symbol => symbol.split('_')[0].toLowerCase());
+  router.get('/live', (req, res) => {
+    const requested = String(req.query.instrument || '').toLowerCase();
+    const configured = service.status().tickerSymbols.map(symbol => symbol.toLowerCase());
     const aggregation = req.query.aggregation;
     const includeIncomplete = req.query.includeIncomplete !== 'false';
     if (!configured.includes(requested)) return res.status(404).json({ error: 'Symbol is not configured' });
@@ -45,7 +45,7 @@ module.exports = function createCandleRoutes(service) {
     };
     if (includeIncomplete) send();
     const unsubscribe = service.subscribeCandles(candle => {
-      if (candle.symbol === requested) send();
+      if (candle.instrument === requested) send();
     });
     req.on('close', unsubscribe);
   });

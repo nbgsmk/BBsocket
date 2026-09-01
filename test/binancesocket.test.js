@@ -46,8 +46,8 @@ test('stores only closed candles and replaces duplicate candles', () => {
   service.handleMessage(JSON.stringify({ k: { t: 1, x: false } }));
   service.handleMessage(closedMessage(now));
   service.handleMessage(closedMessage(now).replace('"101"', '"103"'));
-  assert.equal(service.candles('btcusd').length, 1);
-  assert.equal(service.candles('btcusd')[0].close, '103');
+  assert.equal(service.candles('btcusd_perpetual').length, 1);
+  assert.equal(service.candles('btcusd_perpetual')[0].close, '103');
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
@@ -57,8 +57,8 @@ test('keeps histories separate for combined-stream symbols', () => {
   const message = JSON.parse(closedMessage(Date.now()));
   message.k.s = 'ETHUSD_PERPETUAL';
   service.handleMessage(JSON.stringify({ stream: 'ethusd_perpetual@continuousKline_1m', data: message }));
-  assert.equal(service.candles('btcusd').length, 0);
-  assert.equal(service.candles('ethusd').length, 1);
+  assert.equal(service.candles('btcusd_perpetual').length, 0);
+  assert.equal(service.candles('ethusd_perpetual').length, 1);
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
@@ -69,7 +69,7 @@ test('retains no more than the configured number of candles', () => {
   service.handleMessage(closedMessage(now));
   service.handleMessage(closedMessage(now + 60000));
   service.handleMessage(closedMessage(now + 120000));
-  assert.equal(service.candles('btcusd').length, 2);
+  assert.equal(service.candles('btcusd_perpetual').length, 2);
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
@@ -85,7 +85,7 @@ test('aggregates complete 1m candles into aligned intervals', () => {
     candle.k.c = String(101 + index);
     service.handleMessage(JSON.stringify(candle));
   }
-  const result = service.aggregateCandles('btcusd', '5m');
+  const result = service.aggregateCandles('btcusd_perpetual', '5m');
   assert.equal(result.length, 1);
   assert.equal(result[0].open, '100');
   assert.equal(result[0].close, '105');
@@ -97,18 +97,18 @@ test('aggregates complete 1m candles into aligned intervals', () => {
 test('accepts the custom 2m, 10m, and 20m aggregation intervals', () => {
   const { configPath, directory } = tempConfig();
   const service = new BinanceSocket({ configPath });
-  assert.doesNotThrow(() => service.aggregateCandles('btcusd', '2m'));
-  assert.doesNotThrow(() => service.aggregateCandles('btcusd', '10m'));
-  assert.doesNotThrow(() => service.aggregateCandles('btcusd', '20m'));
+  assert.doesNotThrow(() => service.aggregateCandles('btcusd_perpetual', '2m'));
+  assert.doesNotThrow(() => service.aggregateCandles('btcusd_perpetual', '10m'));
+  assert.doesNotThrow(() => service.aggregateCandles('btcusd_perpetual', '20m'));
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
 test('accepts the custom 2d, 4d, and 5d aggregation intervals', () => {
   const { configPath, directory } = tempConfig();
   const service = new BinanceSocket({ configPath });
-  assert.doesNotThrow(() => service.aggregateCandles('btcusd', '2d'));
-  assert.doesNotThrow(() => service.aggregateCandles('btcusd', '4d'));
-  assert.doesNotThrow(() => service.aggregateCandles('btcusd', '5d'));
+  assert.doesNotThrow(() => service.aggregateCandles('btcusd_perpetual', '2d'));
+  assert.doesNotThrow(() => service.aggregateCandles('btcusd_perpetual', '4d'));
+  assert.doesNotThrow(() => service.aggregateCandles('btcusd_perpetual', '5d'));
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
@@ -119,7 +119,7 @@ test('keeps an open source candle out of history but includes it in live aggrega
   open.k.x = false;
   service.handleMessage(JSON.stringify(open));
   assert.equal(service.candles('btcusd').length, 0);
-  const result = service.aggregateCandles('btcusd', '5m', true);
+  const result = service.aggregateCandles('btcusd_perpetual', '5m', true);
   assert.equal(result.length, 1);
   assert.equal(result[0].candlestickIsClosed, false);
   fs.rmSync(directory, { recursive: true, force: true });

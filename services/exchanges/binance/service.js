@@ -44,7 +44,7 @@ class BinanceSocket extends ExchangeService {
     this.config = readConfig(this.configPath);
     this.WebSocket = options.WebSocket || WebSocket;
     this.socket = null;
-    this.history = new CandleHistory(this.config.historyCandles, this.config.exchangeCandlestickStreamInterval, this.config.tickerSymbols.map(publicSymbol));
+    this.history = new CandleHistory(this.config.historyCandles, this.config.exchangeCandlestickStreamInterval, this.config.tickerSymbols.map(symbolForStream));
     this.reconnectTimer = null;
     this.reconnectDelay = 1000;
   }
@@ -107,10 +107,11 @@ class BinanceSocket extends ExchangeService {
     this.emit('message', { raw: rawMessage.toString(), parsed: message });
     const kline = message.data ? message.data.k : message.k;
     if (!kline) return;
-    const symbol = publicSymbol(kline.s || (message.stream || '').split('@')[0]);
-    if (!this.history.histories[symbol]) return;
+    const instrument = (kline.s || (message.stream || '').split('@')[0]).toLowerCase();
+    if (!this.history.histories[instrument]) return;
     const candle = {
-      symbol,
+      symbol: publicSymbol(instrument),
+      instrument,
       interval: kline.i,
       openTime: kline.t,
       closeTime: kline.T,

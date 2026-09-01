@@ -5,6 +5,6 @@ const createCandleRoutes = require('./candles');
 module.exports = function createApiV1Routes(service) {
   const router = express.Router();
   router.use('/binance', createBinanceRoutes(service));
-  router.use('/binance/candles', createCandleRoutes(service));
+  router.use('/binance/futures/candles', createCandleRoutes(service));
   return router;
 };

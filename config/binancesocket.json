@@ -1,6 +1,7 @@
 {
   "tickerSymbols": [
     "BTCUSD_PERPETUAL",
+    "BTCUSD_NEXT_QUARTER",
     "ETHUSD_PERPETUAL"
   ],
   "historyCandles": 1000,
