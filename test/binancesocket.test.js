@@ -94,6 +94,24 @@ test('aggregates complete 1m candles into aligned intervals', () => {
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
+test('accepts the custom 2m, 10m, and 20m aggregation intervals', () => {
+  const { configPath, directory } = tempConfig();
+  const service = new BinanceSocket({ configPath });
+  assert.doesNotThrow(() => service.aggregateCandles('btcusd', '2m'));
+  assert.doesNotThrow(() => service.aggregateCandles('btcusd', '10m'));
+  assert.doesNotThrow(() => service.aggregateCandles('btcusd', '20m'));
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
+test('accepts the custom 2d, 4d, and 5d aggregation intervals', () => {
+  const { configPath, directory } = tempConfig();
+  const service = new BinanceSocket({ configPath });
+  assert.doesNotThrow(() => service.aggregateCandles('btcusd', '2d'));
+  assert.doesNotThrow(() => service.aggregateCandles('btcusd', '4d'));
+  assert.doesNotThrow(() => service.aggregateCandles('btcusd', '5d'));
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
 test('keeps an open source candle out of history but includes it in live aggregation', () => {
   const { configPath, directory } = tempConfig();
   const service = new BinanceSocket({ configPath });

@@ -140,7 +140,7 @@ Configuration of this server is stored in [config/binancesocket.json](config/bin
 | `exchangeCandlestickStreamInterval` | Exchange candlestick stream input interval | `1m` |
 | `initiallyConnected` | Whether the service should connect on startup and remain enabled for reconnects | `true` |
 
-Supported intervals include `1s`, `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `6h`, `8h`, `12h`, `1d`, `3d`, `1w`, and `1M`.
+Supported exchange stream intervals include `1s`, `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `6h`, `8h`, `12h`, `1d`, `3d`, `1w`, and `1M`.
 
 For a continuous contract, the WebSocket URL is generated as:
 
@@ -244,7 +244,7 @@ The path uses the public symbol portion of any configured continuous contract, l
 
 The optional `limit` parameter returns the newest requested number of candles. It must be a positive integer. The result can never contain more candles than are currently retained in memory.
 
-The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. For example, `GET /api/v1/binance/candles/btcusd?aggregation=5m` combines five closed 1-minute candles into each 5-minute candle. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of `exchangeCandlestickStreamInterval`; calendar-month aggregation (`1M`) is not supported.
+The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. For example, `GET /api/v1/binance/candles/btcusd?aggregation=5m` combines five closed 1-minute candles into each 5-minute candle. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of `exchangeCandlestickStreamInterval`; calendar-month aggregation (`1M`) is not supported. The application also supports the custom local aggregation intervals `2m`, `10m`, `20m`, `2d`, `4d`, and `5d`. These are calculated from the stored 1-minute candles and are not Binance-native stream intervals.
 
 Set `includeIncomplete=true` to include the current in-progress aggregate in the HTTP snapshot. It is marked with `candlestickIsClosed: false` and is built from the latest live 1-minute update. It is not added to completed history.
 
