@@ -381,7 +381,7 @@ The planned combined event format is:
 }
 ```
 
-This is a design specification; indicator parameters are not implemented yet. Indicator values correlate with candles through `instrument`, `aggregation`, and `openTime`, rather than array position. When there is insufficient history for a requested period, its `value` will be `null`. Repeated events with the same `openTime` represent updates to the same live candle. The final event for that candle has `candlestickIsClosed: true`.
+The reusable SMA and EMA calculations are implemented in `services/market-data/indicators.js`; the HTTP/SSE indicator parameters and enriched event output are not connected yet. Indicator values correlate with candles through `instrument`, `aggregation`, and `openTime`, rather than array position. When there is insufficient history for a requested period, its `value` is `null`. Repeated events with the same `openTime` represent updates to the same live candle. The final event for that candle has `candlestickIsClosed: true`.
 
 When `indicators` is omitted, the existing candle-only live-event behavior remains unchanged. The same request syntax and response structure are intended for Coin-M and USD-M services.
 

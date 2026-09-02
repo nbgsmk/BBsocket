@@ -1,0 +1,32 @@
+const assert = require('node:assert/strict');
+const test = require('node:test');
+const { calculateSma, calculateEma } = require('../services/market-data/indicators');
+
+function candles(closes) {
+  return closes.map((close, index) => ({ openTime: index * 60000, close: String(close) }));
+}
+
+test('calculates SMA points and preserves candle timestamps', () => {
+  const result = calculateSma(candles([10, 20, 30, 40]), 3);
+  assert.deepEqual(result.map(point => point.openTime), [0, 60000, 120000, 180000]);
+  assert.deepEqual(result.map(point => point.value), [null, null, 20, 30]);
+});
+
+test('calculates EMA using the first SMA as the seed', () => {
+  const result = calculateEma(candles([10, 20, 30, 40, 50]), 3);
+  assert.deepEqual(result.slice(0, 2).map(point => point.value), [null, null]);
+  assert.deepEqual(result.slice(2).map(point => point.value), [20, 30, 40]);
+});
+
+test('returns null until enough valid closing prices are available', () => {
+  const input = candles([10, 20, 30]);
+  input[1].close = 'not-a-number';
+  assert.deepEqual(calculateSma(input, 2).map(point => point.value), [null, null, null]);
+  assert.deepEqual(calculateEma(input, 2).map(point => point.value), [null, null, null]);
+});
+
+test('rejects invalid indicator periods and candle collections', () => {
+  assert.throws(() => calculateSma([], 0), /positive integer/);
+  assert.throws(() => calculateEma([], 1.5), /positive integer/);
+  assert.throws(() => calculateSma(null, 2), /Candles must be an array/);
+});
