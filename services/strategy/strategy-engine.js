@@ -7,12 +7,13 @@ function indicatorKey(specification, seriesName, multiple) {
 }
 
 class StrategyEngine extends EventEmitter {
-  constructor({ strategy, service, getPosition = () => ({ exists: false, side: null, size: 0 }) }) {
+  constructor({ strategy, service, broker, getPosition }) {
     super();
     if (!strategy || !service || typeof service.subscribeCandles !== 'function') throw new Error('Strategy engine requires a strategy and candle service');
     this.strategy = strategy;
     this.service = service;
-    this.getPosition = getPosition;
+    this.broker = broker;
+    this.getPosition = getPosition || (broker ? ((instrument, price) => broker.getPosition(instrument, price)) : (() => ({ exists: false, side: null, size: 0 })));
     this.specifications = parseIndicatorSpecifications(strategy.indicators.join(','));
     this.lastProcessed = new Set();
     this.unsubscribe = null;
@@ -58,7 +59,7 @@ class StrategyEngine extends EventEmitter {
       volume: currentCandle,
       indicator,
       previous: { price: previousIndex >= 0 ? aggregates[previousIndex] : {}, indicator: previousIndicator },
-      position: this.getPosition(instrument) || { exists: false, side: null, size: 0 }
+      position: this.getPosition(instrument, currentCandle.close) || { exists: false, side: null, size: 0 }
     };
     const position = context.position;
     const entryEvaluation = evaluateCondition(this.strategy.entry, context);
@@ -73,9 +74,11 @@ class StrategyEngine extends EventEmitter {
       action,
       candle: currentCandle,
       position,
+      trade: this.strategy.trade,
       entry: entryEvaluation,
       exit: exitEvaluation
     };
+    if (this.broker) decision.execution = this.broker.execute(decision, currentCandle);
     this.emit('decision', decision);
     return decision;
   }
