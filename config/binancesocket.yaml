@@ -1,0 +1,21 @@
+coinM:
+  host: dstream.binance.com
+  connectOnStart: true
+  fetchHistoricalCandlesOnStart: true
+  initialCandlesInMemory: 200
+  maxCandlesInMemory: 500
+  exchangeCandlestickStreamInterval: 1m
+  tickerSymbols:
+    - BTCUSD_PERPETUAL
+    - BTCUSD_NEXT_QUARTER
+    - ETHUSD_PERPETUAL
+usdM:
+  host: dstream.binance.com
+  connectOnStart: true
+  fetchHistoricalCandlesOnStart: true
+  initialCandlesInMemory: 200
+  maxCandlesInMemory: 500
+  exchangeCandlestickStreamInterval: 1m
+  tickerSymbols:
+    - BTCUSDT
+    - ETHUSDT

@@ -1,10 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
+const YAML = require('yaml');
 const ExchangeService = require('../exchange-service');
 const CandleHistory = require('../../market-data/candle-history');
 
-const CONFIG_PATH = path.join(__dirname, '..', '..', '..', 'config', 'binancesocket.json');
+const CONFIG_PATH = path.join(__dirname, '..', '..', '..', 'config', 'binancesocket.yaml');
 const INTERVALS = new Set(['1s', '1m', '2m', '3m', '5m', '10m', '15m', '20m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '2d', '3d', '4d', '5d', '1w', '1M']);
 const MARKET_TYPES = new Set(['coin-m', 'usd-m']);
 const MAX_HISTORY_RETRIES = 4;
@@ -32,7 +33,7 @@ function configSection(marketType) {
 
 function readConfig(configPath = CONFIG_PATH, marketType = 'coin-m') {
   if (!MARKET_TYPES.has(marketType)) throw new Error('Unsupported Binance market type: ' + marketType);
-  const rootConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const rootConfig = YAML.parse(fs.readFileSync(configPath, 'utf8'));
   const config = rootConfig[configSection(marketType)];
   if (!config || !Array.isArray(config.tickerSymbols) || config.tickerSymbols.length < 1) {
     throw new Error(configSection(marketType) + '.tickerSymbols must contain at least one symbol');
@@ -87,7 +88,7 @@ function readConfig(configPath = CONFIG_PATH, marketType = 'coin-m') {
 
 function writeConfig(config, configPath = CONFIG_PATH) {
   const temporaryPath = configPath + '.tmp';
-  fs.writeFileSync(temporaryPath, JSON.stringify(config, null, 2) + '\n');
+  fs.writeFileSync(temporaryPath, YAML.stringify(config));
   fs.renameSync(temporaryPath, configPath);
 }
 
@@ -269,7 +270,7 @@ class BinanceSocket extends ExchangeService {
   }
 
   persistConfig() {
-    const rootConfig = JSON.parse(fs.readFileSync(this.configPath, 'utf8'));
+    const rootConfig = YAML.parse(fs.readFileSync(this.configPath, 'utf8'));
     rootConfig[configSection(this.marketType)] = this.config;
     writeConfig(rootConfig, this.configPath);
   }

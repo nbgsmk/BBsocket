@@ -142,7 +142,7 @@ PORT=8080 npm start
 
 - ( Check the original Binance documentation for the [continuous-contract kline stream](https://binance-docs.github.io/apidocs/spot/en/#continuous-contract-kline-candlestick-streams) )
 
-Configuration of both Binance market types is stored in [config/binancesocket.json](config/binancesocket.json):
+Configuration of both Binance market types is stored in [config/binancesocket.yaml](config/binancesocket.yaml):
 
 ```json
 {
@@ -210,12 +210,10 @@ The `connectOnStart` value is changed automatically by the connect and disconnec
 
 ### Server configuration
 
-The HTTP listener configuration is stored separately in [config/server.json](config/server.json):
+The HTTP listener configuration is stored separately in [config/server.yaml](config/server.yaml):
 
-```json
-{
-  "serverListenPort": 3000
-}
+```yaml
+serverListenPort: 3000
 ```
 
 The `PORT` environment variable takes precedence over `serverListenPort`, which is useful for deployment platforms:
@@ -498,7 +496,7 @@ The candle history is process-local and is not suitable as durable storage. Use 
 
 ## Potential future server features
 
-The following settings could be added to `config/server.json` if the application needs more deployment or security controls:
+The following settings could be added to `config/server.yaml` if the application needs more deployment or security controls:
 
 - `serverListenHost`: Network interface to bind to. Use `127.0.0.1` for local-only access or `0.0.0.0` to accept connections from other interfaces.
 - `requestBodyLimit`: Maximum accepted JSON/request body size, for example `"100kb"`. This helps prevent oversized requests.

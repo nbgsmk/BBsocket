@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
+const YAML = require('yaml');
 const { BinanceSocket } = require('../services/exchanges/binance/service');
 const ExchangeService = require('../services/exchanges/exchange-service');
 
@@ -15,8 +16,8 @@ const closedMessage = (openTime, closeTime = openTime + 59999) => JSON.stringify
 
 function tempConfig(overrides = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'binancesocket-'));
-  const configPath = path.join(directory, 'config.json');
-  fs.writeFileSync(configPath, JSON.stringify({
+  const configPath = path.join(directory, 'config.yaml');
+  fs.writeFileSync(configPath, YAML.stringify({
     coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesInMemory: 1000, initialCandlesInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: false, connectOnStart: false },
     usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT', 'ETHUSDT'], maxCandlesInMemory: 1000, initialCandlesInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: false, connectOnStart: false },
     ...overrides
@@ -243,8 +244,8 @@ test('persists connection state and stops reconnecting after disconnect', () => 
   }
   const service = new BinanceSocket({ configPath, WebSocket: FakeWebSocket });
   service.connect();
-  assert.equal(JSON.parse(fs.readFileSync(configPath)).coinM.connectOnStart, true);
+  assert.equal(YAML.parse(fs.readFileSync(configPath, 'utf8')).coinM.connectOnStart, true);
   service.disconnect();
-  assert.equal(JSON.parse(fs.readFileSync(configPath)).coinM.connectOnStart, false);
+  assert.equal(YAML.parse(fs.readFileSync(configPath, 'utf8')).coinM.connectOnStart, false);
   fs.rmSync(directory, { recursive: true, force: true });
 });

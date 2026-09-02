@@ -7,7 +7,9 @@
 var app = require('../app');
 var debug = require('debug')('bbsocket:server');
 var http = require('http');
-var serverConfig = require('../config/server.json');
+var YAML = require('yaml');
+var fs = require('fs');
+var serverConfig = YAML.parse(fs.readFileSync(require('path').join(__dirname, '..', 'config', 'server.yaml'), 'utf8'));
 
 /**
  * Get port from environment and store in Express.
