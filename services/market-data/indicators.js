@@ -141,4 +141,96 @@ function calculateVwap(candles) {
   return points;
 }
 
-module.exports = { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap };
+function calculateStochastic(candles, kPeriod, dPeriod, slowing) {
+  validatePeriod(kPeriod);
+  validatePeriod(dPeriod);
+  validatePeriod(slowing);
+  if (!Array.isArray(candles)) throw new Error('Candles must be an array');
+  const points = candles.map(candle => point(candle, null));
+  const rawK = candles.map((candle, index) => {
+    if (index < kPeriod - 1) return null;
+    const window = candles.slice(index - kPeriod + 1, index + 1);
+    const highs = window.map(item => Number(item.high));
+    const lows = window.map(item => Number(item.low));
+    const close = closeValue(candle);
+    if (highs.some(value => !Number.isFinite(value)) || lows.some(value => !Number.isFinite(value)) || close === null) return null;
+    const highest = Math.max(...highs);
+    const lowest = Math.min(...lows);
+    return highest === lowest ? 50 : ((close - lowest) / (highest - lowest)) * 100;
+  });
+  const slowedK = rawK.map((_, index) => {
+    if (index < kPeriod + slowing - 2) return null;
+    const values = rawK.slice(index - slowing + 1, index + 1);
+    return values.some(value => value === null) ? null : values.reduce((sum, value) => sum + value, 0) / slowing;
+  });
+  const dValues = slowedK.map((_, index) => {
+    if (index < kPeriod + slowing + dPeriod - 3) return null;
+    const values = slowedK.slice(index - dPeriod + 1, index + 1);
+    return values.some(value => value === null) ? null : values.reduce((sum, value) => sum + value, 0) / dPeriod;
+  });
+  return {
+    k: points.map((item, index) => ({ ...item, value: slowedK[index] })),
+    d: points.map((item, index) => ({ ...item, value: dValues[index] }))
+  };
+}
+
+function calculateAdx(candles, period) {
+  validatePeriod(period);
+  if (!Array.isArray(candles)) throw new Error('Candles must be an array');
+  const points = candles.map(candle => point(candle, null));
+  const plusDi = candles.map(candle => point(candle, null));
+  const minusDi = candles.map(candle => point(candle, null));
+  const trueRanges = Array(candles.length).fill(null);
+  const plusDm = Array(candles.length).fill(null);
+  const minusDm = Array(candles.length).fill(null);
+
+  for (let index = 1; index < candles.length; index += 1) {
+    const high = Number(candles[index].high);
+    const low = Number(candles[index].low);
+    const previousHigh = Number(candles[index - 1].high);
+    const previousLow = Number(candles[index - 1].low);
+    const previousClose = closeValue(candles[index - 1]);
+    if (![high, low, previousHigh, previousLow].every(Number.isFinite) || previousClose === null) continue;
+    trueRanges[index] = Math.max(high - low, Math.abs(high - previousClose), Math.abs(low - previousClose));
+    const upwardMove = high - previousHigh;
+    const downwardMove = previousLow - low;
+    plusDm[index] = upwardMove > downwardMove && upwardMove > 0 ? upwardMove : 0;
+    minusDm[index] = downwardMove > upwardMove && downwardMove > 0 ? downwardMove : 0;
+  }
+
+  if (candles.length <= period * 2 - 1 || trueRanges.slice(1, period + 1).some(value => value === null)) {
+    return { adx: points, plusDi, minusDi };
+  }
+  let smoothedTr = trueRanges.slice(1, period + 1).reduce((sum, value) => sum + value, 0);
+  let smoothedPlusDm = plusDm.slice(1, period + 1).reduce((sum, value) => sum + value, 0);
+  let smoothedMinusDm = minusDm.slice(1, period + 1).reduce((sum, value) => sum + value, 0);
+  const dx = Array(candles.length).fill(null);
+  const setDirectionalValues = index => {
+    plusDi[index].value = smoothedTr === 0 ? 0 : (100 * smoothedPlusDm) / smoothedTr;
+    minusDi[index].value = smoothedTr === 0 ? 0 : (100 * smoothedMinusDm) / smoothedTr;
+    const denominator = plusDi[index].value + minusDi[index].value;
+    dx[index] = denominator === 0 ? 0 : (100 * Math.abs(plusDi[index].value - minusDi[index].value)) / denominator;
+  };
+  setDirectionalValues(period);
+  for (let index = period + 1; index < candles.length; index += 1) {
+    if (trueRanges[index] === null || plusDm[index] === null || minusDm[index] === null) continue;
+    smoothedTr = smoothedTr - smoothedTr / period + trueRanges[index];
+    smoothedPlusDm = smoothedPlusDm - smoothedPlusDm / period + plusDm[index];
+    smoothedMinusDm = smoothedMinusDm - smoothedMinusDm / period + minusDm[index];
+    setDirectionalValues(index);
+  }
+
+  const firstAdxIndex = period * 2 - 1;
+  const initialDx = dx.slice(period, firstAdxIndex + 1);
+  if (initialDx.some(value => value === null)) return { adx: points, plusDi, minusDi };
+  let adx = initialDx.reduce((sum, value) => sum + value, 0) / period;
+  points[firstAdxIndex].value = adx;
+  for (let index = firstAdxIndex + 1; index < candles.length; index += 1) {
+    if (dx[index] === null) continue;
+    adx = (adx * (period - 1) + dx[index]) / period;
+    points[index].value = adx;
+  }
+  return { adx: points, plusDi, minusDi };
+}
+
+module.exports = { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx };

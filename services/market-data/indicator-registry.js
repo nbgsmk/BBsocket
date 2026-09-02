@@ -1,4 +1,4 @@
-const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap } = require('./indicators');
+const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx } = require('./indicators');
 
 const indicatorRegistry = Object.freeze({
   sma: {
@@ -21,6 +21,15 @@ const indicatorRegistry = Object.freeze({
     parameterNames: [],
     outputSeries: ['value'],
     calculate: candles => ({ value: calculateVwap(candles) })
+  },
+  stochastic: {
+    parameterNames: ['kPeriod', 'dPeriod', 'slowing'],
+    outputSeries: ['k', 'd'],
+    calculate: (candles, parameters) => calculateStochastic(candles, parameters.kPeriod, parameters.dPeriod, parameters.slowing)
+  },
+  adx: {
+    outputSeries: ['adx', 'plusDi', 'minusDi'],
+    calculate: (candles, { period }) => calculateAdx(candles, period)
   }
 });
 

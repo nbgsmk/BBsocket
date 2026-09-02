@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap } = require('../services/market-data/indicators');
+const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx } = require('../services/market-data/indicators');
 const { parseIndicatorSpecifications, calculateIndicators } = require('../services/market-data/indicator-registry');
 
 function candles(closes) {
@@ -74,4 +74,32 @@ test('calculates daily UTC-anchored VWAP from typical price and volume', () => {
   ];
   const result = calculateVwap(input);
   assert.deepEqual(result.map(point => point.value), [11, (11 * 2 + 13) / 3, 21]);
+});
+
+test('calculates stochastic K and D series', () => {
+  const input = [
+    { openTime: 0, high: '10', low: '0', close: '5' },
+    { openTime: 60000, high: '12', low: '1', close: '11' },
+    { openTime: 120000, high: '13', low: '2', close: '12' },
+    { openTime: 180000, high: '14', low: '3', close: '13' }
+  ];
+  const result = calculateStochastic(input, 3, 2, 1);
+  assert.equal(result.k[0].value, null);
+  assert.equal(result.k[2].value, (12 / 13) * 100);
+  assert.equal(result.d[3].value, (result.k[2].value + result.k[3].value) / 2);
+});
+
+test('calculates ADX with directional index series', () => {
+  const input = [
+    { openTime: 0, high: '10', low: '8', close: '9' },
+    { openTime: 60000, high: '12', low: '9', close: '11' },
+    { openTime: 120000, high: '14', low: '11', close: '13' },
+    { openTime: 180000, high: '16', low: '13', close: '15' },
+    { openTime: 240000, high: '18', low: '15', close: '17' }
+  ];
+  const result = calculateAdx(input, 2);
+  assert.equal(result.adx[2].value, null);
+  assert.equal(result.adx[3].value, 100);
+  assert.ok(result.plusDi[3].value > 0);
+  assert.equal(result.minusDi[3].value, 0);
 });

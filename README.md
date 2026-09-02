@@ -277,7 +277,7 @@ GET /api/v1/binance/coin-m/candles/snapshot?instrument=btcusd_perpetual
 GET /api/v1/binance/coin-m/candles/snapshot?instrument=ethusd_perpetual&limit=100
 GET /api/v1/binance/coin-m/candles/snapshot?instrument=btcusd_perpetual&aggregation=5m&limit=100
 GET /api/v1/binance/usd-m/candles/snapshot?instrument=btcusdt&aggregation=15m&includeIncomplete=true
-GET /api/v1/binance/usd-m/candles/snapshot?instrument=btcusdt&aggregation=15m&indicators=sma:20,ema:50,vwap
+GET /api/v1/binance/usd-m/candles/snapshot?instrument=btcusdt&aggregation=15m&indicators=sma:20,ema:50,rsi:14,atr:14,vwap,adx:14,stochastic:14:3:3
 ```
 
 The `instrument` query parameter must contain the full configured instrument, lowercased in the URL. Coin-M uses names such as `instrument=btcusd_perpetual`; USD-M uses names such as `instrument=btcusdt`.
@@ -288,7 +288,7 @@ The optional `aggregation` parameter combines the stored subscription candles in
 
 Set `includeIncomplete=true` to include the current in-progress aggregate in the HTTP snapshot. It is marked with `candlestickIsClosed: false` and is built from the latest live 1-minute update. It is not added to completed history.
 
-The optional `indicators` parameter returns an enriched snapshot containing `instrument`, `aggregation`, `candles`, and an `indicators` array. Period-based indicators use the format `type:period`, separated by commas, for example `indicators=sma:20,ema:50`; parameterless indicators such as VWAP use only their type, for example `vwap`. Supported indicators are SMA, EMA, RSI, ATR, and VWAP. Indicator values are aligned with candle timestamps through `openTime`. The indicator calculation is performed before `limit` is applied, preserving correct warm-up behavior.
+The optional `indicators` parameter returns an enriched snapshot containing `instrument`, `aggregation`, `candles`, and an `indicators` array. Period-based indicators use the format `type:period`, separated by commas, for example `indicators=sma:20,ema:50`; parameterless indicators such as VWAP use only their type, for example `vwap`. Supported indicators are SMA, EMA, RSI, ATR, VWAP, ADX, and Stochastic. Stochastic uses `stochastic:kPeriod:dPeriod:slowing`, for example `stochastic:14:3:3`. Indicator values are aligned with candle timestamps through `openTime`. The indicator calculation is performed before `limit` is applied, preserving correct warm-up behavior.
 
 Example candle:
 
@@ -347,7 +347,7 @@ GET /api/v1/binance/usd-m/candles/live?instrument=btcusdt&aggregation=15m&indica
 The parameter is a comma-separated list of indicator specifications. Each specification contains an indicator type and period separated by a colon:
 
 ```text
-indicators=sma:20,sma:50,ema:20,vwap
+indicators=sma:20,sma:50,ema:20,rsi:14,atr:14,vwap,adx:14,stochastic:14:3:3
 ```
 
 The combined event format is:
@@ -390,7 +390,7 @@ The combined event format is:
 
 Snapshot indicator objects use the same `type`, `parameters`, and `series` structure, with each series containing a timestamped `values` array. Live events contain the current `value` for each named series. A single-series indicator such as SMA therefore uses `series: [{ "name": "value", ... }]`, while multi-series indicators such as MACD can add named `macd`, `signal`, and `histogram` series.
 
-The reusable SMA, EMA, RSI, ATR, and VWAP calculations are implemented in `services/market-data/indicators.js`, and the `indicators` parameter is supported for both candle snapshots and live SSE events. VWAP is anchored to each UTC day and uses typical price `(high + low + close) / 3` weighted by candle volume. Indicator values correlate with candles through `instrument`, `aggregation`, and `openTime`, rather than array position. When there is insufficient history for a requested period, its `value` is `null`. Repeated events with the same `openTime` represent updates to the same live candle. The final event for that candle has `candlestickIsClosed: true`.
+The reusable SMA, EMA, RSI, ATR, VWAP, ADX, and Stochastic calculations are implemented in `services/market-data/indicators.js`, and the `indicators` parameter is supported for both candle snapshots and live SSE events. VWAP is anchored to each UTC day and uses typical price `(high + low + close) / 3` weighted by candle volume. ADX uses Wilder smoothing and exposes `adx`, `plusDi`, and `minusDi` series. Stochastic exposes `k` and `d` series. Indicator values correlate with candles through `instrument`, `aggregation`, and `openTime`, rather than array position. When there is insufficient history for a requested period, its `value` is `null`. Repeated events with the same `openTime` represent updates to the same live candle. The final event for that candle has `candlestickIsClosed: true`.
 
 When `indicators` is omitted, the existing candle-only live-event behavior remains unchanged. The same request syntax and response structure are used for Coin-M and USD-M services.
 
