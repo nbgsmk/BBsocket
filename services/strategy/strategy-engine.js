@@ -16,6 +16,7 @@ class StrategyEngine extends EventEmitter {
     this.getPosition = getPosition || (broker ? ((instrument, price) => broker.getPosition(instrument, price)) : (() => ({ exists: false, side: null, size: 0 })));
     this.specifications = parseIndicatorSpecifications(strategy.indicators.join(','));
     this.lastProcessed = new Set();
+    this.decisions = [];
     this.unsubscribe = null;
   }
 
@@ -79,9 +80,13 @@ class StrategyEngine extends EventEmitter {
       exit: exitEvaluation
     };
     if (this.broker) decision.execution = this.broker.execute(decision, currentCandle);
+    this.decisions.push(decision);
+    if (this.decisions.length > 1000) this.decisions.shift();
     this.emit('decision', decision);
     return decision;
   }
+
+  getDecisions() { return this.decisions.map(decision => ({ ...decision })); }
 }
 
 module.exports = StrategyEngine;

@@ -1,0 +1,20 @@
+const path = require('node:path');
+const { loadStrategy } = require('./strategy-loader');
+const StrategyEngine = require('./strategy-engine');
+const PaperBroker = require('./paper-broker');
+
+function createStrategyRuntime({ strategyFile, services }) {
+  const strategy = loadStrategy(strategyFile);
+  if (!strategy.enabled) return { strategy, engine: null, broker: null };
+  const instrument = strategy.instruments[0];
+  const service = Object.values(services).find(candidate => candidate.config.tickerSymbols.some(symbol => symbol.toLowerCase() === instrument));
+  if (!service || strategy.instruments.some(item => !service.config.tickerSymbols.some(symbol => symbol.toLowerCase() === item))) {
+    throw new Error('Strategy instruments must be configured on the same Binance service');
+  }
+  const broker = new PaperBroker();
+  const engine = new StrategyEngine({ strategy, service, broker });
+  engine.start();
+  return { strategy, engine, broker, service };
+}
+
+module.exports = { createStrategyRuntime, defaultStrategyFile: path.join(__dirname, '..', '..', 'config', 'strategies', 'sample.yaml') };
