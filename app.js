@@ -9,6 +9,7 @@ var usersRouter = require('./routes/users');
 var BinanceSocket = require('./services/exchanges/binance/service').BinanceSocket;
 var createApiV1Routes = require('./routes/api/v1');
 var dashboardRouter = require('./routes/dashboard');
+var chartsRouter = require('./routes/charts');
 var { createStrategyRuntime, defaultStrategyFile } = require('./services/strategy/runtime');
 
 var app = express();
@@ -40,6 +41,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/dashboard', dashboardRouter);
+app.use('/charts', chartsRouter);
 app.use('/users', usersRouter);
 app.use('/api/v1', createApiV1Routes({ coinM: binanceCoinMSocket, usdM: binanceUsdMSocket, strategy: strategyRuntime }));
 

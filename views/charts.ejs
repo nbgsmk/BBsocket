@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/stylesheets/style.css" />
+    <style>
+      main { max-width: 1100px; margin: 1rem auto; padding: 0 1rem; }
+      h1 { margin-top: 0; }
+      button { cursor: pointer; margin: 0 .35rem .35rem 0; padding: .35rem .65rem; }
+      label { margin-right: .5rem; }
+      #chart { border: 1px solid #bbb; display: block; height: 520px; width: 100%; }
+      #message { color: #a00; min-height: 1.5rem; }
+      #summary { font-family: monospace; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1><%= title %></h1>
+      <p>Historical and live candlestick visualization. Strategy execution remains in the backend.</p>
+      <label>Market <select id="market-type"><option value="usd-m">USD-M</option><option value="coin-m">Coin-M</option></select></label>
+      <label>Instrument <select id="instrument"></select></label>
+      <label>Aggregation <select id="aggregation"><option>1m</option><option>5m</option><option>15m</option><option>1h</option></select></label>
+      <label>Limit <input id="limit" type="number" min="1" max="1000" value="300" /></label>
+      <label>Indicator <select id="indicator"><option value="">None</option><option value="sma:20">SMA 20</option><option value="ema:20">EMA 20</option><option value="rsi:14">RSI 14</option><option value="volumeSma:20">Volume SMA 20</option></select></label>
+      <button type="button" id="load">Load chart</button>
+      <button type="button" id="live">Enable live updates</button>
+      <p id="message" role="alert"></p>
+      <canvas id="chart" height="520"></canvas>
+      <p id="summary">Load a chart to begin.</p>
+    </main>
+    <script>
+      const market = document.getElementById('market-type');
+      const instrument = document.getElementById('instrument');
+      const aggregation = document.getElementById('aggregation');
+      const limit = document.getElementById('limit');
+      const indicator = document.getElementById('indicator');
+      const canvas = document.getElementById('chart');
+      const message = document.getElementById('message');
+      const summary = document.getElementById('summary');
+      const liveButton = document.getElementById('live');
+      let candles = [], source = null;
+      const context = canvas.getContext('2d');
+
+      async function loadInstruments() {
+        const response = await fetch('/api/v1/binance/' + market.value + '/status');
+        const body = await response.json();
+        instrument.innerHTML = body.tickerSymbols.map(symbol => '<option value="' + symbol.toLowerCase() + '">' + symbol + '</option>').join('');
+      }
+
+      function draw(data, indicators = []) {
+        candles = data; const width = canvas.clientWidth; const height = canvas.clientHeight; const ratio = window.devicePixelRatio || 1;
+        canvas.width = width * ratio; canvas.height = height * ratio; context.setTransform(ratio, 0, 0, ratio, 0, 0); context.clearRect(0, 0, width, height);
+        if (!data.length) return;
+        const values = data.flatMap(candle => [Number(candle.high), Number(candle.low)]); const min = Math.min(...values); const max = Math.max(...values); const range = max - min || 1;
+        const xStep = width / data.length; const y = value => height - ((value - min) / range) * (height - 20) - 10;
+        data.forEach((candle, index) => { const x = (index + .5) * xStep; const open = y(Number(candle.open)); const close = y(Number(candle.close)); context.strokeStyle = Number(candle.close) >= Number(candle.open) ? '#16803c' : '#b42318'; context.beginPath(); context.moveTo(x, y(Number(candle.high))); context.lineTo(x, y(Number(candle.low))); context.stroke(); context.fillStyle = context.strokeStyle; context.fillRect(x - Math.max(1, xStep * .3), Math.min(open, close), Math.max(2, xStep * .6), Math.max(1, Math.abs(close - open))); });
+        indicators.forEach((indicator, indicatorIndex) => indicator.series.forEach(series => { context.strokeStyle = ['#2563eb', '#9333ea', '#ea580c'][indicatorIndex % 3]; context.beginPath(); series.values.forEach((point, index) => { if (point.value === null || point.value === undefined || !data[index]) return; const x = (index + .5) * xStep; const value = y(Number(point.value)); if (index === 0 || !series.values[index - 1] || series.values[index - 1].value === null) context.moveTo(x, value); else context.lineTo(x, value); }); context.stroke(); }));
+        summary.textContent = data.length + ' candles | latest close: ' + data[data.length - 1].close + ' | ' + new Date(data[data.length - 1].closeTime).toISOString();
+      }
+
+      async function loadChart() {
+        message.textContent = ''; if (source) source.close();
+        const query = new URLSearchParams({ instrument: instrument.value, aggregation: aggregation.value, limit: limit.value });
+        if (indicator.value) query.set('indicators', indicator.value);
+        const response = await fetch('/api/v1/binance/' + market.value + '/candles/snapshot?' + query);
+        const body = await response.json(); if (!response.ok) throw new Error(body.error || 'Chart request failed');
+        draw(body.candles || body, body.indicators || []);
+      }
+
+      document.getElementById('load').addEventListener('click', () => loadChart().catch(error => { message.textContent = error.message; }));
+      liveButton.addEventListener('click', () => { if (source) { source.close(); source = null; liveButton.textContent = 'Enable live updates'; return; } source = new EventSource('/api/v1/binance/' + market.value + '/candles/live?instrument=' + encodeURIComponent(instrument.value) + '&aggregation=' + aggregation.value + '&includeIncomplete=true'); liveButton.textContent = 'Disable live updates'; source.onmessage = event => { const candle = JSON.parse(event.data); const index = candles.findIndex(item => item.openTime === candle.openTime); if (index >= 0) candles[index] = candle; else candles.push(candle); draw(candles); }; });
+      market.addEventListener('change', () => loadInstruments().catch(error => { message.textContent = error.message; }));
+      loadInstruments().then(loadChart).catch(error => { message.textContent = error.message; });
+    </script>
+  </body>
+</html>
