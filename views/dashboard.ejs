@@ -40,6 +40,7 @@
           <option value="ema">EMA</option>
           <option value="rsi">RSI</option>
           <option value="atr">ATR</option>
+          <option value="vwap">VWAP</option>
         </select>
         <label for="indicator-period">Period:</label>
         <input type="number" id="indicator-period" min="1" step="1" value="20" />
@@ -138,7 +139,7 @@
           const query = new URLSearchParams({
             instrument: currentInstrument,
             aggregation: '1m',
-            indicators: indicatorType.value + ':' + period
+            indicators: indicatorType.value === 'vwap' ? 'vwap' : indicatorType.value + ':' + period
           });
           liveUrl = apiPath('candles/live') + '?' + query.toString();
         }

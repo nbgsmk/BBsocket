@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { calculateSma, calculateEma, calculateRsi, calculateAtr } = require('../services/market-data/indicators');
+const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap } = require('../services/market-data/indicators');
 const { parseIndicatorSpecifications, calculateIndicators } = require('../services/market-data/indicator-registry');
 
 function candles(closes) {
@@ -64,4 +64,14 @@ test('calculates ATR from true ranges with Wilder smoothing', () => {
   assert.deepEqual(result.slice(0, 1).map(point => point.value), [null]);
   assert.equal(result[1].value, 3.5);
   assert.equal(result[2].value, 3.25);
+});
+
+test('calculates daily UTC-anchored VWAP from typical price and volume', () => {
+  const input = [
+    { openTime: 0, high: '12', low: '10', close: '11', volume: '2' },
+    { openTime: 60000, high: '14', low: '12', close: '13', volume: '1' },
+    { openTime: 86400000, high: '22', low: '20', close: '21', volume: '2' }
+  ];
+  const result = calculateVwap(input);
+  assert.deepEqual(result.map(point => point.value), [11, (11 * 2 + 13) / 3, 21]);
 });

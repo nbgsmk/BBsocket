@@ -113,4 +113,32 @@ function calculateAtr(candles, period) {
   return points;
 }
 
-module.exports = { calculateSma, calculateEma, calculateRsi, calculateAtr };
+function calculateVwap(candles) {
+  if (!Array.isArray(candles)) throw new Error('Candles must be an array');
+  const points = candles.map(candle => point(candle, null));
+  let session = null;
+  let cumulativeVolume = 0;
+  let cumulativePriceVolume = 0;
+
+  candles.forEach((candle, index) => {
+    const high = Number(candle && candle.high);
+    const low = Number(candle && candle.low);
+    const close = closeValue(candle);
+    const volume = Number(candle && candle.volume);
+    const openTime = Number(candle && candle.openTime);
+    if (!Number.isFinite(high) || !Number.isFinite(low) || close === null || !Number.isFinite(volume) || !Number.isFinite(openTime)) return;
+
+    const candleSession = Math.floor(openTime / 86400000);
+    if (session !== candleSession) {
+      session = candleSession;
+      cumulativeVolume = 0;
+      cumulativePriceVolume = 0;
+    }
+    cumulativeVolume += volume;
+    cumulativePriceVolume += ((high + low + close) / 3) * volume;
+    points[index].value = cumulativeVolume > 0 ? cumulativePriceVolume / cumulativeVolume : null;
+  });
+  return points;
+}
+
+module.exports = { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap };

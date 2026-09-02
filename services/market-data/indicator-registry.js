@@ -1,4 +1,4 @@
-const { calculateSma, calculateEma, calculateRsi, calculateAtr } = require('./indicators');
+const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap } = require('./indicators');
 
 const indicatorRegistry = Object.freeze({
   sma: {
@@ -16,6 +16,11 @@ const indicatorRegistry = Object.freeze({
   atr: {
     outputSeries: ['value'],
     calculate: (candles, { period }) => ({ value: calculateAtr(candles, period) })
+  },
+  vwap: {
+    parameterNames: [],
+    outputSeries: ['value'],
+    calculate: candles => ({ value: calculateVwap(candles) })
   }
 });
 
@@ -25,12 +30,17 @@ function parseIndicatorSpecifications(value) {
 
   return value.split(',').map(specification => {
     const parts = specification.trim().toLowerCase().split(':');
-    if (parts.length !== 2 || !indicatorRegistry[parts[0]] || !/^\d+$/.test(parts[1])) {
+    const definition = indicatorRegistry[parts[0]];
+    const parameterNames = definition ? (definition.parameterNames || ['period']) : [];
+    if (!definition || parts.length !== parameterNames.length + 1 || parameterNames.some((_, index) => !/^\d+$/.test(parts[index + 1]))) {
       throw new Error('Each indicator must use the format type:period, for example sma:20');
     }
-    const period = Number(parts[1]);
-    if (!Number.isInteger(period) || period < 1) throw new Error('Indicator period must be a positive integer');
-    return { type: parts[0], parameters: { period } };
+    const parameters = {};
+    parameterNames.forEach((name, index) => { parameters[name] = Number(parts[index + 1]); });
+    if (Object.values(parameters).some(period => !Number.isInteger(period) || period < 1)) {
+      throw new Error('Indicator period must be a positive integer');
+    }
+    return { type: parts[0], parameters };
   });
 }
 
