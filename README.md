@@ -152,7 +152,7 @@ Configuration of both Binance market types is stored in [config/binancesocket.js
     "maxCandlesticksInMemory": 3000,
     "exchangeCandlestickStreamInterval": "1m",
     "fetchHistoryOnStart": true,
-    "initiallyConnected": true
+    "connectOnStart": true
   },
   "usdM": {
     "host": "dstream.binance.com",
@@ -160,7 +160,7 @@ Configuration of both Binance market types is stored in [config/binancesocket.js
     "maxCandlesticksInMemory": 3000,
     "exchangeCandlestickStreamInterval": "1m",
     "fetchHistoryOnStart": false,
-    "initiallyConnected": false
+    "connectOnStart": false
   }
 }
 ```
@@ -177,7 +177,7 @@ Each `coinM` and `usdM` section contains:
 | `tickerSymbols` | Symbols subscribed to by that market service | `BTCUSD_PERPETUAL` | `BTCUSDT` |
 | `maxCandlesticksInMemory` | Maximum number of completed candlesticks retained per symbol | `1000` | `1000` |
 | `exchangeCandlestickStreamInterval` | Exchange candlestick stream input interval | `1m` | `1m` |
-| `initiallyConnected` | Connect on startup and remain enabled for reconnects; accepts boolean or case-insensitive string values such as `true`, `TRUE`, `false`, and `FALSE` | `true` | `false` |
+| `connectOnStart` | Connect on startup and remain enabled for reconnects; accepts boolean or case-insensitive string values such as `true`, `TRUE`, `false`, and `FALSE` | `true` | `false` |
 | `fetchHistoryOnStart` | Fetch completed candles from Binance REST before startup WebSocket connection; accepts boolean or case-insensitive string values | `true` | `false` |
 
 Supported exchange stream intervals include `1s`, `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `6h`, `8h`, `12h`, `1d`, `3d`, `1w`, and `1M`.
@@ -203,7 +203,7 @@ wss://dstream.binance.com/stream?streams=btcusdt@kline_1m/ethusdt@kline_1m
 
 `maxCandlesticksInMemory` is a candlestick count. For example, with `maxCandlesticksInMemory: 1000`, the service retains at most the latest 1000 completed candlesticks per instrument, regardless of the configured interval.
 
-The `initiallyConnected` value is changed automatically by the connect and disconnect endpoints. The status API continues to expose the current runtime state as `connected`.
+The `connectOnStart` value is changed automatically by the connect and disconnect endpoints. The status API continues to expose the current runtime state as `connected`.
 
 ### Server configuration
 
@@ -248,7 +248,7 @@ GET  /api/v1/binance/usd-m/connect
 POST /api/v1/binance/usd-m/connect
 ```
 
-Enables the service, persists `initiallyConnected: true`, and opens the Binance WebSocket connection. The GET form is provided for convenient use from a browser address bar.
+Enables the service, persists `connectOnStart: true`, and opens the Binance WebSocket connection. The GET form is provided for convenient use from a browser address bar.
 
 ### Disconnect
 
@@ -259,7 +259,7 @@ GET  /api/v1/binance/usd-m/disconnect
 POST /api/v1/binance/usd-m/disconnect
 ```
 
-Disables the service, persists `initiallyConnected: false`, cancels pending reconnects, and closes the active WebSocket.
+Disables the service, persists `connectOnStart: false`, cancels pending reconnects, and closes the active WebSocket.
 
 ### Status
 

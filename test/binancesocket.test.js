@@ -17,15 +17,15 @@ function tempConfig(overrides = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'binancesocket-'));
   const configPath = path.join(directory, 'config.json');
   fs.writeFileSync(configPath, JSON.stringify({
-    coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', initiallyConnected: false },
-    usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT', 'ETHUSDT'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', initiallyConnected: false },
+    coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', connectOnStart: false },
+    usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT', 'ETHUSDT'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', connectOnStart: false },
     ...overrides
   }));
   return { directory, configPath };
 }
 
 test('builds the Coin-M continuous stream URL', () => {
-  const { configPath, directory } = tempConfig({ coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '5m', initiallyConnected: false } });
+  const { configPath, directory } = tempConfig({ coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '5m', connectOnStart: false } });
   const service = new BinanceSocket({ configPath, marketType: 'coin-m' });
   assert.equal(service.streamUrl(), 'wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_5m/ethusd_perpetual@continuousKline_5m');
   fs.rmSync(directory, { recursive: true, force: true });
@@ -39,7 +39,7 @@ test('builds the USD-M stream URL and accepts USD-M symbols', () => {
 });
 
 test('normalizes the configured host to lowercase', () => {
-  const { configPath, directory } = tempConfig({ usdM: { host: 'DSTREAM.BINANCE.COM', tickerSymbols: ['btcusdt'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', initiallyConnected: false } });
+  const { configPath, directory } = tempConfig({ usdM: { host: 'DSTREAM.BINANCE.COM', tickerSymbols: ['btcusdt'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
   const service = new BinanceSocket({ configPath, marketType: 'usd-m' });
   assert.equal(service.config.host, 'dstream.binance.com');
   assert.match(service.streamUrl(), /^wss:\/\/dstream\.binance\.com\//);
@@ -48,9 +48,9 @@ test('normalizes the configured host to lowercase', () => {
 });
 
 test('accepts case-insensitive string connection states', () => {
-  const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', initiallyConnected: 'FALSE' } });
+  const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', connectOnStart: 'FALSE' } });
   const service = new BinanceSocket({ configPath, marketType: 'usd-m' });
-  assert.equal(service.config.initiallyConnected, false);
+  assert.equal(service.config.connectOnStart, false);
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
@@ -88,7 +88,7 @@ test('keeps histories separate for combined-stream symbols', () => {
 });
 
 test('retains no more than the configured number of candles', () => {
-  const { configPath, directory } = tempConfig({ coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesticksInMemory: 2, exchangeCandlestickStreamInterval: '1m', initiallyConnected: false } });
+  const { configPath, directory } = tempConfig({ coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesticksInMemory: 2, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
   const service = new BinanceSocket({ configPath });
   const now = Date.now();
   service.handleMessage(closedMessage(now));
@@ -193,8 +193,8 @@ test('persists connection state and stops reconnecting after disconnect', () => 
   }
   const service = new BinanceSocket({ configPath, WebSocket: FakeWebSocket });
   service.connect();
-  assert.equal(JSON.parse(fs.readFileSync(configPath)).coinM.initiallyConnected, true);
+  assert.equal(JSON.parse(fs.readFileSync(configPath)).coinM.connectOnStart, true);
   service.disconnect();
-  assert.equal(JSON.parse(fs.readFileSync(configPath)).coinM.initiallyConnected, false);
+  assert.equal(JSON.parse(fs.readFileSync(configPath)).coinM.connectOnStart, false);
   fs.rmSync(directory, { recursive: true, force: true });
 });

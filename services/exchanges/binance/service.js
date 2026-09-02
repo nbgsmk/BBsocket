@@ -66,14 +66,14 @@ function readConfig(configPath = CONFIG_PATH, marketType = 'coin-m') {
   if (!INTERVALS.has(config.exchangeCandlestickStreamInterval)) {
     throw new Error('Unsupported Binance interval: ' + config.exchangeCandlestickStreamInterval);
   }
-  if (typeof config.initiallyConnected === 'string') {
-    const connectionState = config.initiallyConnected.trim().toLowerCase();
+  if (typeof config.connectOnStart === 'string') {
+    const connectionState = config.connectOnStart.trim().toLowerCase();
     if (connectionState !== 'true' && connectionState !== 'false') {
-      throw new Error(configSection(marketType) + '.initiallyConnected must be true or false');
+      throw new Error(configSection(marketType) + '.connectOnStart must be true or false');
     }
-    config.initiallyConnected = connectionState === 'true';
+    config.connectOnStart = connectionState === 'true';
   } else {
-    config.initiallyConnected = config.initiallyConnected === true;
+    config.connectOnStart = config.connectOnStart === true;
   }
   return config;
 }
@@ -194,11 +194,11 @@ class BinanceSocket extends ExchangeService {
   initialize() {
     if (this.initializationPromise) return this.initializationPromise;
     this.initializationPromise = (async () => {
-      if (!this.config.initiallyConnected) return;
+      if (!this.config.connectOnStart) return;
       if (this.config.fetchHistoryOnStart) {
         await this.fetchHistory();
       }
-      if (this.config.initiallyConnected && !this.socket) this.openSocket();
+      if (this.config.connectOnStart && !this.socket) this.openSocket();
     })();
     return this.initializationPromise;
   }
@@ -215,11 +215,11 @@ class BinanceSocket extends ExchangeService {
     }
     if (this.connectionPromise) return this.connectionPromise;
     this.config = readConfig(this.configPath, this.marketType);
-    this.config.initiallyConnected = true;
+    this.config.connectOnStart = true;
     this.persistConfig();
     this.connectionPromise = (async () => {
       if (this.config.fetchHistoryOnStart) await this.fetchHistory();
-      if (this.config.initiallyConnected && !this.socket) this.openSocket();
+      if (this.config.connectOnStart && !this.socket) this.openSocket();
     })().finally(() => { this.connectionPromise = null; });
     return this.connectionPromise;
   }
@@ -232,7 +232,7 @@ class BinanceSocket extends ExchangeService {
     socket.on('error', error => console.error('Binance WebSocket error:', error.message));
     socket.on('close', () => {
       if (this.socket === socket) this.socket = null;
-      if (this.config.initiallyConnected) this.scheduleReconnect();
+      if (this.config.connectOnStart) this.scheduleReconnect();
     });
   }
 
@@ -242,13 +242,13 @@ class BinanceSocket extends ExchangeService {
     this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      if (this.config.initiallyConnected) this.openSocket();
+      if (this.config.connectOnStart) this.openSocket();
     }, delay);
   }
 
   disconnect() {
     this.config = readConfig(this.configPath, this.marketType);
-    this.config.initiallyConnected = false;
+    this.config.connectOnStart = false;
     this.persistConfig();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -306,7 +306,7 @@ class BinanceSocket extends ExchangeService {
 
   status() {
     return {
-      connected: this.config.initiallyConnected,
+      connected: this.config.connectOnStart,
       marketType: this.marketType,
       socketOpen: Boolean(this.socket && this.socket.readyState === this.WebSocket.OPEN),
       tickerSymbols: this.config.tickerSymbols,
