@@ -2,8 +2,8 @@ const express = require('express');
 
 module.exports = function createBinanceRoutes(service) {
   const router = express.Router();
-  const connect = (req, res, next) => {
-    try { service.connect(); res.json(service.status()); } catch (error) { next(error); }
+  const connect = async (req, res, next) => {
+    try { await service.connect(); res.json(service.status()); } catch (error) { next(error); }
   };
   const disconnect = (req, res, next) => {
     try { service.disconnect(); res.json(service.status()); } catch (error) { next(error); }

@@ -1,25 +1,25 @@
 {
   "coinM": {
     "host": "dstream.binance.com",
+    "initiallyConnected": true,
+    "fetchHistoryOnStart": true,
+    "maxCandlesticksInMemory": 500,
+    "exchangeCandlestickStreamInterval": "1m",
     "tickerSymbols": [
       "BTCUSD_PERPETUAL",
       "BTCUSD_NEXT_QUARTER",
       "ETHUSD_PERPETUAL"
-    ],
-    "maxCandlesticksInMemory": 120,
-    "exchangeCandlestickStreamInterval": "1m",
-    "fetchHistoryOnStart": true,
-    "initiallyConnected": true
+    ]
   },
   "usdM": {
     "host": "dstream.binance.com",
+    "initiallyConnected": true,
+    "fetchHistoryOnStart": true,
+    "maxCandlesticksInMemory": 500,
+    "exchangeCandlestickStreamInterval": "1m",
     "tickerSymbols": [
       "BTCUSDT",
       "ETHUSDT"
-    ],
-    "maxCandlesticksInMemory": 130,
-    "exchangeCandlestickStreamInterval": "1m",
-    "fetchHistoryOnStart": true,
-    "initiallyConnected": true
+    ]
   }
 }

@@ -7,6 +7,24 @@ const CandleHistory = require('../../market-data/candle-history');
 const CONFIG_PATH = path.join(__dirname, '..', '..', '..', 'config', 'binancesocket.json');
 const INTERVALS = new Set(['1s', '1m', '2m', '3m', '5m', '10m', '15m', '20m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '2d', '3d', '4d', '5d', '1w', '1M']);
 const MARKET_TYPES = new Set(['coin-m', 'usd-m']);
+const MAX_HISTORY_RETRIES = 4;
+const HISTORY_RETRY_BASE_MS = 1000;
+const INSTRUMENT_DELAY_MIN_MS = 250;
+const INSTRUMENT_DELAY_MAX_MS = 500;
+
+function wait(milliseconds) {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
+}
+
+function retryAfterMilliseconds(response) {
+  if (!response || !response.headers || typeof response.headers.get !== 'function') return null;
+  const value = response.headers.get('retry-after');
+  if (!value) return null;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? Math.max(0, timestamp - Date.now()) : null;
+}
 
 function configSection(marketType) {
   return marketType === 'usd-m' ? 'usdM' : 'coinM';
@@ -89,6 +107,7 @@ class BinanceSocket extends ExchangeService {
     this.reconnectTimer = null;
     this.reconnectDelay = 1000;
     this.initializationPromise = null;
+    this.connectionPromise = null;
   }
 
   restUrl() {
@@ -122,8 +141,7 @@ class BinanceSocket extends ExchangeService {
     while (candles.length < this.config.maxCandlesticksInMemory) {
       const limit = Math.min(1500, this.config.maxCandlesticksInMemory - candles.length);
       const url = this.restUrl() + '?' + this.restParameters(tickerSymbol, endTime, limit);
-      const response = await this.fetch(url);
-      if (!response.ok) throw new Error('Binance history request failed with HTTP ' + response.status);
+      const response = await this.fetchHistoryRequest(url);
       const rows = await response.json();
       if (!Array.isArray(rows) || rows.length === 0) break;
       const completed = rows.filter(row => Array.isArray(row) && row.length >= 9 && Number(row[6]) < Date.now());
@@ -135,12 +153,40 @@ class BinanceSocket extends ExchangeService {
     candles.slice(-this.config.maxCandlesticksInMemory).forEach(candle => this.history.update(candle));
   }
 
+  async fetchHistoryRequest(url) {
+    for (let attempt = 0; attempt <= MAX_HISTORY_RETRIES; attempt += 1) {
+      let response;
+      try {
+        response = await this.fetch(url);
+      } catch (error) {
+        if (attempt === MAX_HISTORY_RETRIES) throw error;
+        await wait(HISTORY_RETRY_BASE_MS * (2 ** attempt) + Math.random() * 250);
+        continue;
+      }
+
+      if (response.ok) return response;
+      const retryable = response.status === 429 || response.status >= 500;
+      if (!retryable || attempt === MAX_HISTORY_RETRIES) {
+        throw new Error('Binance history request failed with HTTP ' + response.status);
+      }
+      const retryAfter = response.status === 429 ? retryAfterMilliseconds(response) : null;
+      const delay = retryAfter === null
+        ? HISTORY_RETRY_BASE_MS * (2 ** attempt) + Math.random() * 250
+        : retryAfter;
+      await wait(delay);
+    }
+  }
+
   async fetchHistory() {
-    for (const symbol of this.config.tickerSymbols) {
+    for (const [index, symbol] of this.config.tickerSymbols.entries()) {
       try {
         await this.fetchHistoryForSymbol(symbol);
       } catch (error) {
         console.error('Binance history fetch failed for ' + symbol + ':', error.message);
+      }
+      if (index < this.config.tickerSymbols.length - 1) {
+        const delay = INSTRUMENT_DELAY_MIN_MS + Math.random() * (INSTRUMENT_DELAY_MAX_MS - INSTRUMENT_DELAY_MIN_MS);
+        await wait(delay);
       }
     }
   }
@@ -148,10 +194,11 @@ class BinanceSocket extends ExchangeService {
   initialize() {
     if (this.initializationPromise) return this.initializationPromise;
     this.initializationPromise = (async () => {
+      if (!this.config.initiallyConnected) return;
       if (this.config.fetchHistoryOnStart) {
         await this.fetchHistory();
       }
-      if (this.config.initiallyConnected) this.connect();
+      if (this.config.initiallyConnected && !this.socket) this.openSocket();
     })();
     return this.initializationPromise;
   }
@@ -164,12 +211,17 @@ class BinanceSocket extends ExchangeService {
 
   connect() {
     if (this.socket && (this.socket.readyState === this.WebSocket.OPEN || this.socket.readyState === this.WebSocket.CONNECTING)) {
-      return;
+      return Promise.resolve();
     }
+    if (this.connectionPromise) return this.connectionPromise;
     this.config = readConfig(this.configPath, this.marketType);
     this.config.initiallyConnected = true;
     this.persistConfig();
-    this.openSocket();
+    this.connectionPromise = (async () => {
+      if (this.config.fetchHistoryOnStart) await this.fetchHistory();
+      if (this.config.initiallyConnected && !this.socket) this.openSocket();
+    })().finally(() => { this.connectionPromise = null; });
+    return this.connectionPromise;
   }
 
   openSocket() {
