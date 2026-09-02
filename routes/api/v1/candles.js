@@ -1,4 +1,5 @@
 const express = require('express');
+const { parseIndicatorSpecifications, calculateIndicators } = require('../../../services/market-data/indicators');
 
 module.exports = function createCandleRoutes(service) {
   const router = express.Router();
@@ -10,10 +11,27 @@ module.exports = function createCandleRoutes(service) {
     if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) return res.status(400).json({ error: 'limit must be a positive integer' });
     try {
       const includeIncomplete = req.query.includeIncomplete === 'true';
+      const indicators = parseIndicatorSpecifications(req.query.indicators);
       const result = req.query.aggregation
         ? service.aggregateCandles(requested, req.query.aggregation, includeIncomplete)
         : service.candles(requested, limit);
-      res.json(Number.isInteger(limit) && limit > 0 ? result.slice(-limit) : result);
+      if (!indicators.length) {
+        return res.json(Number.isInteger(limit) && limit > 0 ? result.slice(-limit) : result);
+      }
+
+      const aggregation = req.query.aggregation || service.status().exchangeCandlestickStreamInterval;
+      const indicatorValues = calculateIndicators(result, indicators);
+      const candles = Number.isInteger(limit) && limit > 0 ? result.slice(-limit) : result;
+      const limitedIndicators = indicatorValues.map(indicator => ({
+        ...indicator,
+        values: Number.isInteger(limit) && limit > 0 ? indicator.values.slice(-limit) : indicator.values
+      }));
+      return res.json({
+        instrument: requested,
+        aggregation,
+        candles,
+        indicators: limitedIndicators
+      });
     } catch (error) { res.status(400).json({ error: error.message }); }
   });
 

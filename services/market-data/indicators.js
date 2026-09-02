@@ -53,4 +53,32 @@ function calculateEma(candles, period) {
   return points;
 }
 
-module.exports = { calculateSma, calculateEma };
+function parseIndicatorSpecifications(value) {
+  if (value === undefined || value === '') return [];
+  if (typeof value !== 'string') throw new Error('indicators must be a comma-separated list');
+
+  return value.split(',').map(specification => {
+    const parts = specification.trim().toLowerCase().split(':');
+    if (parts.length !== 2 || !['sma', 'ema'].includes(parts[0]) || !/^\d+$/.test(parts[1])) {
+      throw new Error('Each indicator must use the format type:period, for example sma:20');
+    }
+    const period = Number(parts[1]);
+    validatePeriod(period);
+    return { type: parts[0], period };
+  });
+}
+
+function calculateIndicators(candles, specifications) {
+  return specifications.map(({ type, period }) => ({
+    type,
+    period,
+    values: (type === 'sma' ? calculateSma(candles, period) : calculateEma(candles, period))
+  }));
+}
+
+module.exports = {
+  calculateSma,
+  calculateEma,
+  parseIndicatorSpecifications,
+  calculateIndicators
+};

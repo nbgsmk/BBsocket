@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { calculateSma, calculateEma } = require('../services/market-data/indicators');
+const { calculateSma, calculateEma, parseIndicatorSpecifications, calculateIndicators } = require('../services/market-data/indicators');
 
 function candles(closes) {
   return closes.map((close, index) => ({ openTime: index * 60000, close: String(close) }));
@@ -29,4 +29,19 @@ test('rejects invalid indicator periods and candle collections', () => {
   assert.throws(() => calculateSma([], 0), /positive integer/);
   assert.throws(() => calculateEma([], 1.5), /positive integer/);
   assert.throws(() => calculateSma(null, 2), /Candles must be an array/);
+});
+
+test('parses multiple indicator specifications and calculates aligned series', () => {
+  const specifications = parseIndicatorSpecifications('SMA:2, ema:3');
+  assert.deepEqual(specifications, [{ type: 'sma', period: 2 }, { type: 'ema', period: 3 }]);
+  const result = calculateIndicators(candles([10, 20, 30]), specifications);
+  assert.deepEqual(result.map(indicator => [indicator.type, indicator.period]), [['sma', 2], ['ema', 3]]);
+  assert.deepEqual(result[0].values.map(point => point.value), [null, 15, 25]);
+  assert.deepEqual(result[1].values.map(point => point.openTime), [0, 60000, 120000]);
+});
+
+test('rejects malformed indicator specifications', () => {
+  assert.throws(() => parseIndicatorSpecifications('sma'), /type:period/);
+  assert.throws(() => parseIndicatorSpecifications('rsi:14'), /type:period/);
+  assert.throws(() => parseIndicatorSpecifications('ema:0'), /positive integer/);
 });

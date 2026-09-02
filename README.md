@@ -277,6 +277,7 @@ GET /api/v1/binance/coin-m/candles/snapshot?instrument=btcusd_perpetual
 GET /api/v1/binance/coin-m/candles/snapshot?instrument=ethusd_perpetual&limit=100
 GET /api/v1/binance/coin-m/candles/snapshot?instrument=btcusd_perpetual&aggregation=5m&limit=100
 GET /api/v1/binance/usd-m/candles/snapshot?instrument=btcusdt&aggregation=15m&includeIncomplete=true
+GET /api/v1/binance/usd-m/candles/snapshot?instrument=btcusdt&aggregation=15m&indicators=sma:20,ema:50
 ```
 
 The `instrument` query parameter must contain the full configured instrument, lowercased in the URL. Coin-M uses names such as `instrument=btcusd_perpetual`; USD-M uses names such as `instrument=btcusdt`.
@@ -286,6 +287,8 @@ The optional `limit` parameter returns the newest requested number of candles. I
 The optional `aggregation` parameter combines the stored subscription candles into a larger, UTC-aligned interval at request time. The original subscription candles remain in memory. Only complete aggregation windows are returned; a window with missing source candles is skipped. `aggregation` must be equal to or a multiple of the selected service's `exchangeCandlestickStreamInterval`; calendar-month aggregation (`1M`) is not supported. The custom local intervals `2m`, `10m`, `20m`, `2d`, `4d`, and `5d` are also supported.
 
 Set `includeIncomplete=true` to include the current in-progress aggregate in the HTTP snapshot. It is marked with `candlestickIsClosed: false` and is built from the latest live 1-minute update. It is not added to completed history.
+
+The optional `indicators` parameter returns an enriched snapshot containing `instrument`, `aggregation`, `candles`, and an `indicators` array. It uses the format `type:period`, separated by commas, for example `indicators=sma:20,ema:50`. Indicator values are aligned with candle timestamps through `openTime`. The indicator calculation is performed before `limit` is applied, preserving correct warm-up behavior.
 
 Example candle:
 
@@ -381,7 +384,7 @@ The planned combined event format is:
 }
 ```
 
-The reusable SMA and EMA calculations are implemented in `services/market-data/indicators.js`; the HTTP/SSE indicator parameters and enriched event output are not connected yet. Indicator values correlate with candles through `instrument`, `aggregation`, and `openTime`, rather than array position. When there is insufficient history for a requested period, its `value` is `null`. Repeated events with the same `openTime` represent updates to the same live candle. The final event for that candle has `candlestickIsClosed: true`.
+The reusable SMA and EMA calculations are implemented in `services/market-data/indicators.js`, and the `indicators` parameter is currently supported for candle snapshots. Enriched SSE events are planned but are not connected yet. Indicator values correlate with candles through `instrument`, `aggregation`, and `openTime`, rather than array position. When there is insufficient history for a requested period, its `value` is `null`. Repeated events with the same `openTime` represent updates to the same live candle. The final event for that candle has `candlestickIsClosed: true`.
 
 When `indicators` is omitted, the existing candle-only live-event behavior remains unchanged. The same request syntax and response structure are intended for Coin-M and USD-M services.
 
