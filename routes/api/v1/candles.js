@@ -66,11 +66,6 @@ module.exports = function createCandleRoutes(service) {
         if (!candle.candlestickIsClosed || candle.openTime === lastCompletedOpenTime) return;
         lastCompletedOpenTime = candle.openTime;
       }
-      if (!indicators.length) {
-        res.write('data: ' + JSON.stringify(candle) + '\n\n');
-        return;
-      }
-
       const indicatorValues = calculateIndicators(candles, indicators).map(indicator => ({
         type: indicator.type,
         parameters: indicator.parameters,

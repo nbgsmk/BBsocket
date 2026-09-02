@@ -351,6 +351,8 @@ To receive only one event per completed aggregate, set `includeIncomplete=false`
 GET /api/v1/binance/coin-m/candles/live?instrument=btcusd_perpetual&aggregation=15m&includeIncomplete=false
 ```
 
+All server-aggregated candle SSE events use the same envelope. OHLC data is always under `candlestick`, and `indicators` is always an array (empty when no indicators were requested).
+
 This mode suppresses the initial snapshot and all in-progress updates. It emits one event when each new aggregated candle closes and ignores duplicate close updates.
 
 ### Indicator-enriched live events
