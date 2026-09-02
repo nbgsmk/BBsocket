@@ -8,6 +8,8 @@ test('chart page contains data controls and live chart integration', () => {
   assert.match(template, /candles\/snapshot/);
   assert.match(template, /candles\/live/);
   assert.match(template, /payload\.candlestick/);
+  assert.match(template, /stopLiveUpdates/);
+  assert.match(template, /indicators=/);
   assert.match(template, /openTime/);
   assert.match(template, /indicator/);
 });
