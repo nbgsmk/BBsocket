@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd } = require('../services/market-data/indicators');
+const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd, calculateVolumeSma, calculateVolumeEma, calculateBollingerBands } = require('../services/market-data/indicators');
 const { parseIndicatorSpecifications, calculateIndicators } = require('../services/market-data/indicator-registry');
 
 function candles(closes) {
@@ -116,4 +116,19 @@ test('calculates MACD, signal, and histogram series', () => {
 
 test('rejects invalid MACD periods', () => {
   assert.throws(() => calculateMacd(candles([1, 2, 3]), 12, 12, 9), /fast period must be less/);
+});
+
+test('calculates Bollinger middle, upper, and lower series', () => {
+  const result = calculateBollingerBands(candles([10, 12, 14]), 3, 2);
+  assert.equal(result.middle[1].value, null);
+  assert.equal(result.middle[2].value, 12);
+  assert.equal(result.upper[2].value, 12 + (Math.sqrt(8 / 3) * 2));
+  assert.equal(result.lower[2].value, 12 - (Math.sqrt(8 / 3) * 2));
+});
+
+test('calculates volume SMA and EMA from candle volume', () => {
+  const input = candles([10, 20, 30]).map((candle, index) => ({ ...candle, volume: String((index + 1) * 100) }));
+  assert.deepEqual(calculateVolumeSma(input, 2).map(point => point.value), [null, 150, 250]);
+  assert.deepEqual(calculateVolumeEma(input, 2).map(point => point.value), [null, 150, 250]);
+  assert.deepEqual(parseIndicatorSpecifications('VOLUMESMA:2,VOLUMEEMA:2').map(indicator => indicator.type), ['volumeSma', 'volumeEma']);
 });

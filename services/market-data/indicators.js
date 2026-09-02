@@ -255,4 +255,44 @@ function calculateMacd(candles, fastPeriod, slowPeriod, signalPeriod) {
   };
 }
 
-module.exports = { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd };
+function volumeValue(candle) {
+  const value = Number(candle && candle.volume);
+  return Number.isFinite(value) ? value : null;
+}
+
+function calculateVolumeSma(candles, period) {
+  return calculateSma(candles.map(candle => ({ ...candle, close: volumeValue(candle) })), period);
+}
+
+function calculateVolumeEma(candles, period) {
+  return calculateEma(candles.map(candle => ({ ...candle, close: volumeValue(candle) })), period);
+}
+
+function calculateBollingerBands(candles, period, standardDeviations) {
+  validatePeriod(period);
+  if (!Number.isFinite(standardDeviations) || standardDeviations < 0) {
+    throw new Error('Bollinger standard deviations must be a non-negative number');
+  }
+  if (!Array.isArray(candles)) throw new Error('Candles must be an array');
+  const middle = candles.map(candle => point(candle, null));
+  const upper = candles.map(candle => point(candle, null));
+  const lower = candles.map(candle => point(candle, null));
+  candles.forEach((candle, index) => {
+    if (index < period - 1) return;
+    const values = candles.slice(index - period + 1, index + 1).map(closeValue);
+    if (values.some(value => value === null)) return;
+    const average = values.reduce((sum, value) => sum + value, 0) / period;
+    const variance = values.reduce((sum, value) => sum + ((value - average) ** 2), 0) / period;
+    const deviation = Math.sqrt(variance) * standardDeviations;
+    middle[index].value = average;
+    upper[index].value = average + deviation;
+    lower[index].value = average - deviation;
+  });
+  return { middle, upper, lower };
+}
+
+module.exports = {
+  calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap,
+  calculateStochastic, calculateAdx, calculateMacd, calculateVolumeSma,
+  calculateVolumeEma, calculateBollingerBands
+};

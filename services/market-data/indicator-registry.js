@@ -1,4 +1,4 @@
-const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd } = require('./indicators');
+const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd, calculateVolumeSma, calculateVolumeEma, calculateBollingerBands } = require('./indicators');
 
 const indicatorRegistry = Object.freeze({
   sma: {
@@ -35,6 +35,19 @@ const indicatorRegistry = Object.freeze({
     parameterNames: ['fastPeriod', 'slowPeriod', 'signalPeriod'],
     outputSeries: ['macd', 'signal', 'histogram'],
     calculate: (candles, parameters) => calculateMacd(candles, parameters.fastPeriod, parameters.slowPeriod, parameters.signalPeriod)
+  },
+  bollinger: {
+    parameterNames: ['period', 'standardDeviations'],
+    outputSeries: ['middle', 'upper', 'lower'],
+    calculate: (candles, parameters) => calculateBollingerBands(candles, parameters.period, parameters.standardDeviations)
+  },
+  volumeSma: {
+    outputSeries: ['value'],
+    calculate: (candles, { period }) => ({ value: calculateVolumeSma(candles, period) })
+  },
+  volumeEma: {
+    outputSeries: ['value'],
+    calculate: (candles, { period }) => ({ value: calculateVolumeEma(candles, period) })
   }
 });
 
@@ -44,17 +57,26 @@ function parseIndicatorSpecifications(value) {
 
   return value.split(',').map(specification => {
     const parts = specification.trim().toLowerCase().split(':');
-    const definition = indicatorRegistry[parts[0]];
+    const type = Object.keys(indicatorRegistry).find(name => name.toLowerCase() === parts[0]);
+    const definition = type ? indicatorRegistry[type] : undefined;
     const parameterNames = definition ? (definition.parameterNames || ['period']) : [];
-    if (!definition || parts.length !== parameterNames.length + 1 || parameterNames.some((_, index) => !/^\d+$/.test(parts[index + 1]))) {
+    if (!definition || parts.length !== parameterNames.length + 1) {
       throw new Error('Each indicator must use the format type:period, for example sma:20');
     }
     const parameters = {};
-    parameterNames.forEach((name, index) => { parameters[name] = Number(parts[index + 1]); });
-    if (Object.values(parameters).some(period => !Number.isInteger(period) || period < 1)) {
-      throw new Error('Indicator period must be a positive integer');
-    }
-    return { type: parts[0], parameters };
+    parameterNames.forEach((name, index) => {
+      if (!/^\d+(?:\.\d+)?$/.test(parts[index + 1])) {
+        throw new Error('Each indicator must use the format type:period, for example sma:20');
+      }
+      parameters[name] = Number(parts[index + 1]);
+      if (name.toLowerCase().includes('period') && (!Number.isInteger(parameters[name]) || parameters[name] < 1)) {
+        throw new Error('Indicator period must be a positive integer');
+      }
+      if (!name.toLowerCase().includes('period') && parameters[name] < 0) {
+        throw new Error('Indicator parameter must be non-negative');
+      }
+    });
+    return { type, parameters };
   });
 }
 
