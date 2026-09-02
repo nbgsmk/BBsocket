@@ -43,6 +43,7 @@
           <option value="vwap">VWAP</option>
           <option value="adx">ADX</option>
           <option value="stochastic">Stochastic</option>
+          <option value="macd">MACD</option>
         </select>
         <label for="indicator-period">Period:</label>
         <input type="number" id="indicator-period" min="1" step="1" value="20" />
@@ -141,7 +142,11 @@
           const query = new URLSearchParams({
             instrument: currentInstrument,
             aggregation: '1m',
-            indicators: indicatorType.value === 'vwap' ? 'vwap' : indicatorType.value + ':' + period
+            indicators: indicatorType.value === 'vwap'
+              ? 'vwap'
+              : indicatorType.value === 'macd'
+                ? 'macd:12:26:9'
+                : indicatorType.value + ':' + period
           });
           liveUrl = apiPath('candles/live') + '?' + query.toString();
         }

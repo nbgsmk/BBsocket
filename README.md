@@ -288,7 +288,7 @@ The optional `aggregation` parameter combines the stored subscription candles in
 
 Set `includeIncomplete=true` to include the current in-progress aggregate in the HTTP snapshot. It is marked with `candlestickIsClosed: false` and is built from the latest live 1-minute update. It is not added to completed history.
 
-The optional `indicators` parameter returns an enriched snapshot containing `instrument`, `aggregation`, `candles`, and an `indicators` array. Period-based indicators use the format `type:period`, separated by commas, for example `indicators=sma:20,ema:50`; parameterless indicators such as VWAP use only their type, for example `vwap`. Supported indicators are SMA, EMA, RSI, ATR, VWAP, ADX, and Stochastic. Stochastic uses `stochastic:kPeriod:dPeriod:slowing`, for example `stochastic:14:3:3`. Indicator values are aligned with candle timestamps through `openTime`. The indicator calculation is performed before `limit` is applied, preserving correct warm-up behavior.
+The optional `indicators` parameter returns an enriched snapshot containing `instrument`, `aggregation`, `candles`, and an `indicators` array. Period-based indicators use the format `type:period`, separated by commas, for example `indicators=sma:20,ema:50`; parameterless indicators such as VWAP use only their type, for example `vwap`. Supported indicators are SMA, EMA, RSI, ATR, VWAP, ADX, Stochastic, and MACD. Stochastic uses `stochastic:kPeriod:dPeriod:slowing`, for example `stochastic:14:3:3`; MACD uses `macd:fastPeriod:slowPeriod:signalPeriod`, for example `macd:12:26:9`. Indicator values are aligned with candle timestamps through `openTime`. The indicator calculation is performed before `limit` is applied, preserving correct warm-up behavior.
 
 Example candle:
 

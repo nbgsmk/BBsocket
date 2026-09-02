@@ -5,6 +5,7 @@ function validatePeriod(period) {
 }
 
 function closeValue(candle) {
+  if (!candle || candle.close === null || candle.close === undefined || candle.close === '') return null;
   const value = Number(candle && candle.close);
   return Number.isFinite(value) ? value : null;
 }
@@ -233,4 +234,25 @@ function calculateAdx(candles, period) {
   return { adx: points, plusDi, minusDi };
 }
 
-module.exports = { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx };
+function calculateMacd(candles, fastPeriod, slowPeriod, signalPeriod) {
+  validatePeriod(fastPeriod);
+  validatePeriod(slowPeriod);
+  validatePeriod(signalPeriod);
+  if (fastPeriod >= slowPeriod) throw new Error('MACD fast period must be less than slow period');
+  if (!Array.isArray(candles)) throw new Error('Candles must be an array');
+
+  const fast = calculateEma(candles, fastPeriod);
+  const slow = calculateEma(candles, slowPeriod);
+  const macd = candles.map((candle, index) => point(candle,
+    fast[index].value === null || slow[index].value === null ? null : fast[index].value - slow[index].value));
+  const signalInput = macd.map(item => ({ openTime: item.openTime, close: item.value }));
+  const signal = calculateEma(signalInput, signalPeriod);
+  return {
+    macd,
+    signal,
+    histogram: candles.map((candle, index) => point(candle,
+      macd[index].value === null || signal[index].value === null ? null : macd[index].value - signal[index].value))
+  };
+}
+
+module.exports = { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd };

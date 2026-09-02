@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx } = require('../services/market-data/indicators');
+const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd } = require('../services/market-data/indicators');
 const { parseIndicatorSpecifications, calculateIndicators } = require('../services/market-data/indicator-registry');
 
 function candles(closes) {
@@ -102,4 +102,18 @@ test('calculates ADX with directional index series', () => {
   assert.equal(result.adx[3].value, 100);
   assert.ok(result.plusDi[3].value > 0);
   assert.equal(result.minusDi[3].value, 0);
+});
+
+test('calculates MACD, signal, and histogram series', () => {
+  const result = calculateMacd(candles(Array.from({ length: 40 }, (_, index) => index + 1)), 3, 5, 2);
+  assert.deepEqual(Object.keys(result), ['macd', 'signal', 'histogram']);
+  assert.equal(result.macd[3].value, null);
+  assert.notEqual(result.macd[4].value, null);
+  assert.equal(result.signal[4].value, null);
+  assert.notEqual(result.signal[5].value, null);
+  assert.equal(result.histogram[5].value, result.macd[5].value - result.signal[5].value);
+});
+
+test('rejects invalid MACD periods', () => {
+  assert.throws(() => calculateMacd(candles([1, 2, 3]), 12, 12, 9), /fast period must be less/);
 });
