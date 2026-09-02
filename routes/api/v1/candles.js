@@ -40,9 +40,13 @@ module.exports = function createCandleRoutes(service) {
     const configured = service.status().tickerSymbols.map(symbol => symbol.toLowerCase());
     const aggregation = req.query.aggregation;
     const includeIncomplete = req.query.includeIncomplete !== 'false';
+    let indicators;
     if (!configured.includes(requested)) return res.status(404).json({ error: 'Symbol is not configured' });
     if (!aggregation) return res.status(400).json({ error: 'aggregation is required' });
-    try { service.aggregateCandles(requested, aggregation, includeIncomplete); } catch (error) { return res.status(400).json({ error: error.message }); }
+    try {
+      indicators = parseIndicatorSpecifications(req.query.indicators);
+      service.aggregateCandles(requested, aggregation, includeIncomplete);
+    } catch (error) { return res.status(400).json({ error: error.message }); }
     res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
     res.flushHeaders();
     res.write(': connected\n\n');
@@ -59,7 +63,28 @@ module.exports = function createCandleRoutes(service) {
         if (!candle.candlestickIsClosed || candle.openTime === lastCompletedOpenTime) return;
         lastCompletedOpenTime = candle.openTime;
       }
-      res.write('data: ' + JSON.stringify(candle) + '\n\n');
+      if (!indicators.length) {
+        res.write('data: ' + JSON.stringify(candle) + '\n\n');
+        return;
+      }
+
+      const indicatorValues = calculateIndicators(candles, indicators).map(indicator => ({
+        type: indicator.type,
+        period: indicator.period,
+        value: indicator.values[indicator.values.length - 1].value
+      }));
+      res.write('data: ' + JSON.stringify({
+        eventType: 'candlestickUpdate',
+        exchange: 'binance',
+        marketType: service.marketType || service.status().marketType,
+        instrument: requested,
+        aggregation,
+        openTime: candle.openTime,
+        closeTime: candle.closeTime,
+        candlestickIsClosed: candle.candlestickIsClosed,
+        candlestick: candle,
+        indicators: indicatorValues
+      }) + '\n\n');
     };
     if (includeIncomplete) send();
     const unsubscribe = service.subscribeCandles(candle => {

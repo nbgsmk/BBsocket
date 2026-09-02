@@ -336,9 +336,9 @@ GET /api/v1/binance/coin-m/candles/live?instrument=btcusd_perpetual&aggregation=
 
 This mode suppresses the initial snapshot and all in-progress updates. It emits one event when each new aggregated candle closes and ignores duplicate close updates.
 
-### Planned indicators to be emitted with live events
+### Indicator-enriched live events
 
-The planned indicator extension keeps `/candles/live` as the single SSE endpoint and requests calculated indicators with an optional `indicators` parameter:
+The live endpoint remains a single SSE endpoint and requests calculated indicators with an optional `indicators` parameter:
 
 ```text
 GET /api/v1/binance/usd-m/candles/live?instrument=btcusdt&aggregation=15m&indicators=sma:20,ema:50
@@ -350,7 +350,7 @@ The parameter is a comma-separated list of indicator specifications. Each specif
 indicators=sma:20,sma:50,ema:20
 ```
 
-The planned combined event format is:
+The combined event format is:
 
 ```json
 {
@@ -384,9 +384,9 @@ The planned combined event format is:
 }
 ```
 
-The reusable SMA and EMA calculations are implemented in `services/market-data/indicators.js`, and the `indicators` parameter is currently supported for candle snapshots. Enriched SSE events are planned but are not connected yet. Indicator values correlate with candles through `instrument`, `aggregation`, and `openTime`, rather than array position. When there is insufficient history for a requested period, its `value` is `null`. Repeated events with the same `openTime` represent updates to the same live candle. The final event for that candle has `candlestickIsClosed: true`.
+The reusable SMA and EMA calculations are implemented in `services/market-data/indicators.js`, and the `indicators` parameter is supported for both candle snapshots and live SSE events. Indicator values correlate with candles through `instrument`, `aggregation`, and `openTime`, rather than array position. When there is insufficient history for a requested period, its `value` is `null`. Repeated events with the same `openTime` represent updates to the same live candle. The final event for that candle has `candlestickIsClosed: true`.
 
-When `indicators` is omitted, the existing candle-only live-event behavior remains unchanged. The same request syntax and response structure are intended for Coin-M and USD-M services.
+When `indicators` is omitted, the existing candle-only live-event behavior remains unchanged. The same request syntax and response structure are used for Coin-M and USD-M services.
 
 Example with curl:
 
