@@ -4,7 +4,7 @@
     "connectOnStart": true,
     "fetchHistoricalCandlesOnStart": true,
     "initialCandlesInMemory": 200,
-    "maxCandlesticksInMemory": 500,
+    "maxCandlesInMemory": 500,
     "exchangeCandlestickStreamInterval": "1m",
     "tickerSymbols": [
       "BTCUSD_PERPETUAL",
@@ -17,7 +17,7 @@
     "connectOnStart": true,
     "fetchHistoricalCandlesOnStart": true,
     "initialCandlesInMemory": 200,
-    "maxCandlesticksInMemory": 500,
+    "maxCandlesInMemory": 500,
     "exchangeCandlestickStreamInterval": "1m",
     "tickerSymbols": [
       "BTCUSDT",

@@ -17,15 +17,15 @@ function tempConfig(overrides = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'binancesocket-'));
   const configPath = path.join(directory, 'config.json');
   fs.writeFileSync(configPath, JSON.stringify({
-    coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesticksInMemory: 1000, initialCandlesInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: false, connectOnStart: false },
-    usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT', 'ETHUSDT'], maxCandlesticksInMemory: 1000, initialCandlesInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: false, connectOnStart: false },
+    coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesInMemory: 1000, initialCandlesInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: false, connectOnStart: false },
+    usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT', 'ETHUSDT'], maxCandlesInMemory: 1000, initialCandlesInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: false, connectOnStart: false },
     ...overrides
   }));
   return { directory, configPath };
 }
 
 test('builds the Coin-M continuous stream URL', () => {
-  const { configPath, directory } = tempConfig({ coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '5m', connectOnStart: false } });
+  const { configPath, directory } = tempConfig({ coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesInMemory: 1000, exchangeCandlestickStreamInterval: '5m', connectOnStart: false } });
   const service = new BinanceSocket({ configPath, marketType: 'coin-m' });
   assert.equal(service.streamUrl(), 'wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_5m/ethusd_perpetual@continuousKline_5m');
   fs.rmSync(directory, { recursive: true, force: true });
@@ -39,7 +39,7 @@ test('builds the USD-M stream URL and accepts USD-M symbols', () => {
 });
 
 test('normalizes the configured host to lowercase', () => {
-  const { configPath, directory } = tempConfig({ usdM: { host: 'DSTREAM.BINANCE.COM', tickerSymbols: ['btcusdt'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
+  const { configPath, directory } = tempConfig({ usdM: { host: 'DSTREAM.BINANCE.COM', tickerSymbols: ['btcusdt'], maxCandlesInMemory: 1000, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
   const service = new BinanceSocket({ configPath, marketType: 'usd-m' });
   assert.equal(service.config.host, 'dstream.binance.com');
   assert.match(service.streamUrl(), /^wss:\/\/dstream\.binance\.com\//);
@@ -48,14 +48,14 @@ test('normalizes the configured host to lowercase', () => {
 });
 
 test('accepts case-insensitive string connection states', () => {
-  const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', connectOnStart: 'FALSE' } });
+  const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesInMemory: 1000, exchangeCandlestickStreamInterval: '1m', connectOnStart: 'FALSE' } });
   const service = new BinanceSocket({ configPath, marketType: 'usd-m' });
   assert.equal(service.config.connectOnStart, false);
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
 test('accepts case-insensitive historical candle startup states', () => {
-  const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: 'TRUE', connectOnStart: false } });
+  const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: 'TRUE', connectOnStart: false } });
   const service = new BinanceSocket({ configPath, marketType: 'usd-m' });
   assert.equal(service.config.fetchHistoricalCandlesOnStart, true);
   assert.equal(service.status().fetchHistoricalCandlesOnStart, true);
@@ -63,12 +63,12 @@ test('accepts case-insensitive historical candle startup states', () => {
 });
 
 test('defaults and caps the initial historical candle count', () => {
-  const defaultConfig = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 7, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
+  const defaultConfig = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesInMemory: 7, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
   const defaultService = new BinanceSocket({ configPath: defaultConfig.configPath, marketType: 'usd-m' });
   assert.equal(defaultService.config.initialCandlesInMemory, 7);
   fs.rmSync(defaultConfig.directory, { recursive: true, force: true });
 
-  const cappedConfig = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 7, initialCandlesInMemory: 20, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
+  const cappedConfig = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesInMemory: 7, initialCandlesInMemory: 20, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
   const cappedService = new BinanceSocket({ configPath: cappedConfig.configPath, marketType: 'usd-m' });
   assert.equal(cappedService.config.initialCandlesInMemory, 7);
   assert.equal(cappedService.status().initialCandlesInMemory, 7);
@@ -77,14 +77,14 @@ test('defaults and caps the initial historical candle count', () => {
 
 test('rejects invalid initial historical candle counts', () => {
   for (const value of [0, -1, 1.5, 'seven']) {
-    const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 7, initialCandlesInMemory: value, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
+    const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesInMemory: 7, initialCandlesInMemory: value, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
     assert.throws(() => new BinanceSocket({ configPath, marketType: 'usd-m' }), /initialCandlesInMemory must be a positive integer/);
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
 
 test('uses the effective initial count for historical backfill requests', async () => {
-  const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 5, initialCandlesInMemory: 2, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
+  const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesInMemory: 5, initialCandlesInMemory: 2, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
   const requests = [];
   const rows = [
     [1, '100', '101', '99', '100', '1', 59999, '100', 1],
@@ -138,7 +138,7 @@ test('keeps histories separate for combined-stream symbols', () => {
 });
 
 test('retains no more than the configured number of candles', () => {
-  const { configPath, directory } = tempConfig({ coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesticksInMemory: 2, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
+  const { configPath, directory } = tempConfig({ coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesInMemory: 2, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
   const service = new BinanceSocket({ configPath });
   const now = Date.now();
   service.handleMessage(closedMessage(now));

@@ -150,7 +150,7 @@ Configuration of both Binance market types is stored in [config/binancesocket.js
     "host": "dstream.binance.com",
     "tickerSymbols": ["BTCUSD_PERPETUAL", "ETHUSD_PERPETUAL"],
     "initialCandlesInMemory": 3000,
-    "maxCandlesticksInMemory": 3000,
+    "maxCandlesInMemory": 3000,
     "exchangeCandlestickStreamInterval": "1m",
     "fetchHistoricalCandlesOnStart": true,
     "connectOnStart": true
@@ -159,7 +159,7 @@ Configuration of both Binance market types is stored in [config/binancesocket.js
     "host": "dstream.binance.com",
     "tickerSymbols": ["BTCUSDT", "ETHUSDT"],
     "initialCandlesInMemory": 3000,
-    "maxCandlesticksInMemory": 3000,
+    "maxCandlesInMemory": 3000,
     "exchangeCandlestickStreamInterval": "1m",
     "fetchHistoricalCandlesOnStart": false,
     "connectOnStart": false
@@ -177,8 +177,8 @@ Each `coinM` and `usdM` section contains:
 | --- | --- | --- | --- |
 | `host` | Binance WebSocket hostname; loaded case-insensitively and normalized to lowercase | `dstream.binance.com` | `dstream.binance.com` |
 | `tickerSymbols` | Symbols subscribed to by that market service | `BTCUSD_PERPETUAL` | `BTCUSDT` |
-| `initialCandlesInMemory` | Number of completed candles fetched per configured symbol during startup/manual historical backfill; capped at `maxCandlesticksInMemory` | `1000` | `1000` |
-| `maxCandlesticksInMemory` | Maximum number of completed candlesticks retained per symbol | `1000` | `1000` |
+| `initialCandlesInMemory` | Number of completed candles fetched per configured symbol during startup/manual historical backfill; capped at `maxCandlesInMemory` | `1000` | `1000` |
+| `maxCandlesInMemory` | Maximum number of completed candles retained per symbol | `1000` | `1000` |
 | `exchangeCandlestickStreamInterval` | Exchange candlestick stream input interval | `1m` | `1m` |
 | `connectOnStart` | Connect on startup and remain enabled for reconnects; accepts boolean or case-insensitive string values such as `true`, `TRUE`, `false`, and `FALSE` | `true` | `false` |
 | `fetchHistoricalCandlesOnStart` | Fetch completed candles from Binance REST before startup WebSocket connection; accepts boolean or case-insensitive string values | `true` | `false` |
@@ -204,7 +204,7 @@ wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_1m/eth
 wss://dstream.binance.com/stream?streams=btcusdt@kline_1m/ethusdt@kline_1m
 ```
 
-`maxCandlesticksInMemory` is a candlestick count. For example, with `maxCandlesticksInMemory: 1000`, the service retains at most the latest 1000 completed candlesticks per instrument, regardless of the configured interval.
+`maxCandlesInMemory` is a candle count. For example, with `maxCandlesInMemory: 1000`, the service retains at most the latest 1000 completed candles per instrument, regardless of the configured interval.
 
 The `connectOnStart` value is changed automatically by the connect and disconnect endpoints. The status API continues to expose the current runtime state as `connected`.
 
@@ -280,7 +280,7 @@ Example response:
   "tickerSymbols": ["BTCUSD_PERPETUAL", "ETHUSD_PERPETUAL"],
   "webSocketUrl": "wss://dstream.binance.com/stream?streams=btcusd_perpetual@continuousKline_1m/ethusd_perpetual@continuousKline_1m",
   "exchangeCandlestickStreamInterval": "1m",
-  "maxCandlesticksInMemory": 1000,
+  "maxCandlesInMemory": 1000,
   "candles": {
     "btcusd_perpetual": 42,
     "ethusd_perpetual": 41
@@ -329,7 +329,7 @@ Example candle:
 }
 ```
 
-Only completed candles are retained. When `fetchHistoricalCandlesOnStart` is true, the service backfills up to `initialCandlesInMemory` candles per configured symbol from the appropriate Binance REST endpoint (using pagination when needed) before opening an initially enabled WebSocket connection. If `initialCandlesInMemory` is omitted, it defaults to `maxCandlesticksInMemory`; larger values are capped at `maxCandlesticksInMemory`. If historical fetching is disabled, history begins accumulating after a connection is established.
+Only completed candles are retained. When `fetchHistoricalCandlesOnStart` is true, the service backfills up to `initialCandlesInMemory` candles per configured symbol from the appropriate Binance REST endpoint (using pagination when needed) before opening an initially enabled WebSocket connection. If `initialCandlesInMemory` is omitted, it defaults to `maxCandlesInMemory`; larger values are capped at `maxCandlesInMemory`. If historical fetching is disabled, history begins accumulating after a connection is established.
 
 ### Live socket data
 
@@ -488,7 +488,7 @@ Confirm that the Express server is running and that the browser is using the sam
 
 ### Configuration validation fails
 
-Use an instrument name such as `BTCUSD_PERPETUAL` or `BTCUSDT`, a positive integer for `maxCandlesticksInMemory`, and one of the supported intervals in `exchangeCandlestickStreamInterval`.
+Use an instrument name such as `BTCUSD_PERPETUAL` or `BTCUSDT`, a positive integer for `maxCandlesInMemory`, and one of the supported intervals in `exchangeCandlestickStreamInterval`.
 
 ## Security and deployment notes
 

@@ -49,15 +49,15 @@ function readConfig(configPath = CONFIG_PATH, marketType = 'coin-m') {
     throw new Error(configSection(marketType) + '.host must be a non-empty hostname');
   }
   config.host = config.host.trim().toLowerCase();
-  if (!Number.isInteger(config.maxCandlesticksInMemory) || config.maxCandlesticksInMemory < 1) {
-    throw new Error('maxCandlesticksInMemory must be a positive integer');
+  if (!Number.isInteger(config.maxCandlesInMemory) || config.maxCandlesInMemory < 1) {
+    throw new Error('maxCandlesInMemory must be a positive integer');
   }
   if (config.initialCandlesInMemory === undefined) {
-    config.initialCandlesInMemory = config.maxCandlesticksInMemory;
+    config.initialCandlesInMemory = config.maxCandlesInMemory;
   } else if (!Number.isInteger(config.initialCandlesInMemory) || config.initialCandlesInMemory < 1) {
     throw new Error('initialCandlesInMemory must be a positive integer');
   } else {
-    config.initialCandlesInMemory = Math.min(config.initialCandlesInMemory, config.maxCandlesticksInMemory);
+    config.initialCandlesInMemory = Math.min(config.initialCandlesInMemory, config.maxCandlesInMemory);
   }
   if (typeof config.fetchHistoricalCandlesOnStart === 'string') {
     const fetchHistory = config.fetchHistoricalCandlesOnStart.trim().toLowerCase();
@@ -110,7 +110,7 @@ class BinanceSocket extends ExchangeService {
     this.fetch = options.fetch || global.fetch;
     if (typeof this.fetch !== 'function') throw new Error('A fetch implementation is required');
     this.socket = null;
-    this.history = new CandleHistory(this.config.maxCandlesticksInMemory, this.config.exchangeCandlestickStreamInterval, this.config.tickerSymbols.map(symbolForStream));
+    this.history = new CandleHistory(this.config.maxCandlesInMemory, this.config.exchangeCandlestickStreamInterval, this.config.tickerSymbols.map(symbolForStream));
     this.reconnectTimer = null;
     this.reconnectDelay = 1000;
     this.initializationPromise = null;
@@ -319,7 +319,7 @@ class BinanceSocket extends ExchangeService {
       tickerSymbols: this.config.tickerSymbols,
       webSocketUrl: this.streamUrl(),
       exchangeCandlestickStreamInterval: this.config.exchangeCandlestickStreamInterval,
-	  maxCandlesticksInMemory: this.config.maxCandlesticksInMemory,
+	  maxCandlesInMemory: this.config.maxCandlesInMemory,
       initialCandlesInMemory: this.config.initialCandlesInMemory,
       fetchHistoricalCandlesOnStart: this.config.fetchHistoricalCandlesOnStart,
       candles: this.history.counts()
