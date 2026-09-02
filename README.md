@@ -151,7 +151,7 @@ Configuration of both Binance market types is stored in [config/binancesocket.js
     "tickerSymbols": ["BTCUSD_PERPETUAL", "ETHUSD_PERPETUAL"],
     "maxCandlesticksInMemory": 3000,
     "exchangeCandlestickStreamInterval": "1m",
-    "fetchHistoryOnStart": true,
+    "fetchHistoricalCandlesOnStart": true,
     "connectOnStart": true
   },
   "usdM": {
@@ -159,7 +159,7 @@ Configuration of both Binance market types is stored in [config/binancesocket.js
     "tickerSymbols": ["BTCUSDT", "ETHUSDT"],
     "maxCandlesticksInMemory": 3000,
     "exchangeCandlestickStreamInterval": "1m",
-    "fetchHistoryOnStart": false,
+    "fetchHistoricalCandlesOnStart": false,
     "connectOnStart": false
   }
 }
@@ -178,7 +178,7 @@ Each `coinM` and `usdM` section contains:
 | `maxCandlesticksInMemory` | Maximum number of completed candlesticks retained per symbol | `1000` | `1000` |
 | `exchangeCandlestickStreamInterval` | Exchange candlestick stream input interval | `1m` | `1m` |
 | `connectOnStart` | Connect on startup and remain enabled for reconnects; accepts boolean or case-insensitive string values such as `true`, `TRUE`, `false`, and `FALSE` | `true` | `false` |
-| `fetchHistoryOnStart` | Fetch completed candles from Binance REST before startup WebSocket connection; accepts boolean or case-insensitive string values | `true` | `false` |
+| `fetchHistoricalCandlesOnStart` | Fetch completed candles from Binance REST before startup WebSocket connection; accepts boolean or case-insensitive string values | `true` | `false` |
 
 Supported exchange stream intervals include `1s`, `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `6h`, `8h`, `12h`, `1d`, `3d`, `1w`, and `1M`.
 
@@ -326,7 +326,7 @@ Example candle:
 }
 ```
 
-Only completed candles are retained. When `fetchHistoryOnStart` is true, the service backfills up to `maxCandlesticksInMemory` candles per configured symbol from the appropriate Binance REST endpoint (using pagination when needed) before opening an initially enabled WebSocket connection. If disabled, history begins accumulating after a connection is established.
+Only completed candles are retained. When `fetchHistoricalCandlesOnStart` is true, the service backfills up to `maxCandlesticksInMemory` candles per configured symbol from the appropriate Binance REST endpoint (using pagination when needed) before opening an initially enabled WebSocket connection. If disabled, history begins accumulating after a connection is established.
 
 ### Live socket data
 

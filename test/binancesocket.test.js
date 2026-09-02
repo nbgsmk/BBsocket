@@ -17,8 +17,8 @@ function tempConfig(overrides = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'binancesocket-'));
   const configPath = path.join(directory, 'config.json');
   fs.writeFileSync(configPath, JSON.stringify({
-    coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', connectOnStart: false },
-    usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT', 'ETHUSDT'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', connectOnStart: false },
+    coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: false, connectOnStart: false },
+    usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT', 'ETHUSDT'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: false, connectOnStart: false },
     ...overrides
   }));
   return { directory, configPath };
@@ -51,6 +51,14 @@ test('accepts case-insensitive string connection states', () => {
   const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', connectOnStart: 'FALSE' } });
   const service = new BinanceSocket({ configPath, marketType: 'usd-m' });
   assert.equal(service.config.connectOnStart, false);
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
+test('accepts case-insensitive historical candle startup states', () => {
+  const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: 'TRUE', connectOnStart: false } });
+  const service = new BinanceSocket({ configPath, marketType: 'usd-m' });
+  assert.equal(service.config.fetchHistoricalCandlesOnStart, true);
+  assert.equal(service.status().fetchHistoricalCandlesOnStart, true);
   fs.rmSync(directory, { recursive: true, force: true });
 });
 

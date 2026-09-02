@@ -52,16 +52,16 @@ function readConfig(configPath = CONFIG_PATH, marketType = 'coin-m') {
   if (!Number.isInteger(config.maxCandlesticksInMemory) || config.maxCandlesticksInMemory < 1) {
     throw new Error('maxCandlesticksInMemory must be a positive integer');
   }
-  if (typeof config.fetchHistoryOnStart === 'string') {
-    const fetchHistory = config.fetchHistoryOnStart.trim().toLowerCase();
+  if (typeof config.fetchHistoricalCandlesOnStart === 'string') {
+    const fetchHistory = config.fetchHistoricalCandlesOnStart.trim().toLowerCase();
     if (fetchHistory !== 'true' && fetchHistory !== 'false') {
-      throw new Error(configSection(marketType) + '.fetchHistoryOnStart must be true or false');
+      throw new Error(configSection(marketType) + '.fetchHistoricalCandlesOnStart must be true or false');
     }
-    config.fetchHistoryOnStart = fetchHistory === 'true';
-  } else if (config.fetchHistoryOnStart === undefined) {
-    config.fetchHistoryOnStart = false;
-  } else if (typeof config.fetchHistoryOnStart !== 'boolean') {
-    throw new Error(configSection(marketType) + '.fetchHistoryOnStart must be true or false');
+    config.fetchHistoricalCandlesOnStart = fetchHistory === 'true';
+  } else if (config.fetchHistoricalCandlesOnStart === undefined) {
+    config.fetchHistoricalCandlesOnStart = false;
+  } else if (typeof config.fetchHistoricalCandlesOnStart !== 'boolean') {
+    throw new Error(configSection(marketType) + '.fetchHistoricalCandlesOnStart must be true or false');
   }
   if (!INTERVALS.has(config.exchangeCandlestickStreamInterval)) {
     throw new Error('Unsupported Binance interval: ' + config.exchangeCandlestickStreamInterval);
@@ -195,7 +195,7 @@ class BinanceSocket extends ExchangeService {
     if (this.initializationPromise) return this.initializationPromise;
     this.initializationPromise = (async () => {
       if (!this.config.connectOnStart) return;
-      if (this.config.fetchHistoryOnStart) {
+      if (this.config.fetchHistoricalCandlesOnStart) {
         await this.fetchHistory();
       }
       if (this.config.connectOnStart && !this.socket) this.openSocket();
@@ -218,7 +218,7 @@ class BinanceSocket extends ExchangeService {
     this.config.connectOnStart = true;
     this.persistConfig();
     this.connectionPromise = (async () => {
-      if (this.config.fetchHistoryOnStart) await this.fetchHistory();
+      if (this.config.fetchHistoricalCandlesOnStart) await this.fetchHistory();
       if (this.config.connectOnStart && !this.socket) this.openSocket();
     })().finally(() => { this.connectionPromise = null; });
     return this.connectionPromise;
@@ -313,7 +313,7 @@ class BinanceSocket extends ExchangeService {
       webSocketUrl: this.streamUrl(),
       exchangeCandlestickStreamInterval: this.config.exchangeCandlestickStreamInterval,
 	  maxCandlesticksInMemory: this.config.maxCandlesticksInMemory,
-      fetchHistoryOnStart: this.config.fetchHistoryOnStart,
+      fetchHistoricalCandlesOnStart: this.config.fetchHistoricalCandlesOnStart,
       candles: this.history.counts()
     };
   }

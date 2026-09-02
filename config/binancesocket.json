@@ -2,7 +2,7 @@
   "coinM": {
     "host": "dstream.binance.com",
     "connectOnStart": true,
-    "fetchHistoryOnStart": true,
+    "fetchHistoricalCandlesOnStart": true,
     "maxCandlesticksInMemory": 500,
     "exchangeCandlestickStreamInterval": "1m",
     "tickerSymbols": [
@@ -14,7 +14,7 @@
   "usdM": {
     "host": "dstream.binance.com",
     "connectOnStart": true,
-    "fetchHistoryOnStart": true,
+    "fetchHistoricalCandlesOnStart": true,
     "maxCandlesticksInMemory": 500,
     "exchangeCandlestickStreamInterval": "1m",
     "tickerSymbols": [
