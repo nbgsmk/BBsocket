@@ -390,7 +390,7 @@ The combined event format is:
 
 Snapshot indicator objects use the same `type`, `parameters`, and `series` structure, with each series containing a timestamped `values` array. Live events contain the current `value` for each named series. A single-series indicator such as SMA therefore uses `series: [{ "name": "value", ... }]`, while multi-series indicators such as MACD can add named `macd`, `signal`, and `histogram` series.
 
-The reusable SMA and EMA calculations are implemented in `services/market-data/indicators.js`, and the `indicators` parameter is supported for both candle snapshots and live SSE events. Indicator values correlate with candles through `instrument`, `aggregation`, and `openTime`, rather than array position. When there is insufficient history for a requested period, its `value` is `null`. Repeated events with the same `openTime` represent updates to the same live candle. The final event for that candle has `candlestickIsClosed: true`.
+The reusable SMA, EMA, RSI, and ATR calculations are implemented in `services/market-data/indicators.js`, and the `indicators` parameter is supported for both candle snapshots and live SSE events. Indicator values correlate with candles through `instrument`, `aggregation`, and `openTime`, rather than array position. When there is insufficient history for a requested period, its `value` is `null`. Repeated events with the same `openTime` represent updates to the same live candle. The final event for that candle has `candlestickIsClosed: true`.
 
 When `indicators` is omitted, the existing candle-only live-event behavior remains unchanged. The same request syntax and response structure are used for Coin-M and USD-M services.
 

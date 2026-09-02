@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { calculateSma, calculateEma } = require('../services/market-data/indicators');
+const { calculateSma, calculateEma, calculateRsi, calculateAtr } = require('../services/market-data/indicators');
 const { parseIndicatorSpecifications, calculateIndicators } = require('../services/market-data/indicator-registry');
 
 function candles(closes) {
@@ -43,6 +43,25 @@ test('parses multiple indicator specifications and calculates aligned series', (
 
 test('rejects malformed indicator specifications', () => {
   assert.throws(() => parseIndicatorSpecifications('sma'), /type:period/);
-  assert.throws(() => parseIndicatorSpecifications('rsi:14'), /type:period/);
+  assert.throws(() => parseIndicatorSpecifications('macd:14'), /type:period/);
   assert.throws(() => parseIndicatorSpecifications('ema:0'), /positive integer/);
+});
+
+test('calculates RSI with Wilder smoothing', () => {
+  const result = calculateRsi(candles([1, 2, 3, 2, 1, 4]), 3);
+  assert.deepEqual(result.slice(0, 3).map(point => point.value), [null, null, null]);
+  assert.equal(result[3].value, 66.66666666666666);
+  assert.ok(result[4].value < result[3].value);
+});
+
+test('calculates ATR from true ranges with Wilder smoothing', () => {
+  const input = [
+    { openTime: 0, high: '12', low: '10', close: '11' },
+    { openTime: 60000, high: '14', low: '9', close: '13' },
+    { openTime: 120000, high: '15', low: '12', close: '14' }
+  ];
+  const result = calculateAtr(input, 2);
+  assert.deepEqual(result.slice(0, 1).map(point => point.value), [null]);
+  assert.equal(result[1].value, 3.5);
+  assert.equal(result[2].value, 3.25);
 });

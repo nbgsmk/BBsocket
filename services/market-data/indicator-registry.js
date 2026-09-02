@@ -1,4 +1,4 @@
-const { calculateSma, calculateEma } = require('./indicators');
+const { calculateSma, calculateEma, calculateRsi, calculateAtr } = require('./indicators');
 
 const indicatorRegistry = Object.freeze({
   sma: {
@@ -8,6 +8,14 @@ const indicatorRegistry = Object.freeze({
   ema: {
     outputSeries: ['value'],
     calculate: (candles, { period }) => ({ value: calculateEma(candles, period) })
+  },
+  rsi: {
+    outputSeries: ['value'],
+    calculate: (candles, { period }) => ({ value: calculateRsi(candles, period) })
+  },
+  atr: {
+    outputSeries: ['value'],
+    calculate: (candles, { period }) => ({ value: calculateAtr(candles, period) })
   }
 });
 
