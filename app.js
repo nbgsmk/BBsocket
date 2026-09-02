@@ -17,6 +17,12 @@ var binanceUsdMSocket = new BinanceSocket({ marketType: 'usd-m' });
 var strategyRuntime;
 try {
   strategyRuntime = createStrategyRuntime({ strategyFile: process.env.STRATEGY_FILE || defaultStrategyFile, services: { coinM: binanceCoinMSocket, usdM: binanceUsdMSocket } });
+  if (strategyRuntime.strategy) {
+    console.info('Strategy loaded:', strategyRuntime.strategy.name + ' v' + strategyRuntime.strategy.version,
+      'enabled=' + strategyRuntime.strategy.enabled,
+      'instruments=' + strategyRuntime.strategy.instruments.join(','),
+      'aggregation=' + strategyRuntime.strategy.aggregation);
+  }
 } catch (error) {
   console.error('Strategy startup failed:', error.message);
   strategyRuntime = { strategy: null, engine: null, broker: null };
