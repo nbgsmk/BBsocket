@@ -10,7 +10,7 @@
       h1 { margin-top: 0; }
       button { cursor: pointer; margin: 0 .35rem .35rem 0; padding: .35rem .65rem; }
       label { margin-right: .5rem; }
-      #chart { border: 1px solid #bbb; display: block; height: 520px; width: 100%; }
+      #chart { border: 1px solid #bbb; height: 520px; width: 100%; }
       #message { color: #a00; min-height: 1.5rem; }
       #summary { font-family: monospace; white-space: pre-wrap; }
     </style>
@@ -27,21 +27,25 @@
       <button type="button" id="load">Load chart</button>
       <button type="button" id="live">Enable live updates</button>
       <p id="message" role="alert"></p>
-      <canvas id="chart" height="520"></canvas>
+      <div id="chart"></div>
       <p id="summary">Load a chart to begin.</p>
     </main>
+    <script src="/vendor/lightweight-charts.standalone.production.js"></script>
     <script>
       const market = document.getElementById('market-type');
       const instrument = document.getElementById('instrument');
       const aggregation = document.getElementById('aggregation');
       const limit = document.getElementById('limit');
       const indicator = document.getElementById('indicator');
-      const canvas = document.getElementById('chart');
+      const chartElement = document.getElementById('chart');
       const message = document.getElementById('message');
       const summary = document.getElementById('summary');
       const liveButton = document.getElementById('live');
       let candles = [], source = null;
-      const context = canvas.getContext('2d');
+      const chart = LightweightCharts.createChart(chartElement, { height: 520, layout: { background: { color: '#ffffff' }, textColor: '#333333' }, grid: { vertLines: { color: '#eeeeee' }, horzLines: { color: '#eeeeee' } } });
+      const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, { upColor: '#16803c', downColor: '#b42318', borderVisible: false, wickUpColor: '#16803c', wickDownColor: '#b42318' });
+      let indicatorSeries = [];
+      new ResizeObserver(() => chart.resize(chartElement.clientWidth, 520)).observe(chartElement);
 
       async function loadInstruments() {
         const response = await fetch('/api/v1/binance/' + market.value + '/status');
@@ -50,13 +54,10 @@
       }
 
       function draw(data, indicators = []) {
-        candles = data; const width = canvas.clientWidth; const height = canvas.clientHeight; const ratio = window.devicePixelRatio || 1;
-        canvas.width = width * ratio; canvas.height = height * ratio; context.setTransform(ratio, 0, 0, ratio, 0, 0); context.clearRect(0, 0, width, height);
-        if (!data.length) return;
-        const values = data.flatMap(candle => [Number(candle.high), Number(candle.low)]); const min = Math.min(...values); const max = Math.max(...values); const range = max - min || 1;
-        const xStep = width / data.length; const y = value => height - ((value - min) / range) * (height - 20) - 10;
-        data.forEach((candle, index) => { const x = (index + .5) * xStep; const open = y(Number(candle.open)); const close = y(Number(candle.close)); context.strokeStyle = Number(candle.close) >= Number(candle.open) ? '#16803c' : '#b42318'; context.beginPath(); context.moveTo(x, y(Number(candle.high))); context.lineTo(x, y(Number(candle.low))); context.stroke(); context.fillStyle = context.strokeStyle; context.fillRect(x - Math.max(1, xStep * .3), Math.min(open, close), Math.max(2, xStep * .6), Math.max(1, Math.abs(close - open))); });
-        indicators.forEach((indicator, indicatorIndex) => indicator.series.forEach(series => { context.strokeStyle = ['#2563eb', '#9333ea', '#ea580c'][indicatorIndex % 3]; context.beginPath(); series.values.forEach((point, index) => { if (point.value === null || point.value === undefined || !data[index]) return; const x = (index + .5) * xStep; const value = y(Number(point.value)); if (index === 0 || !series.values[index - 1] || series.values[index - 1].value === null) context.moveTo(x, value); else context.lineTo(x, value); }); context.stroke(); }));
+        candles = data; candleSeries.setData(data.filter(item => Number.isFinite(Number(item.openTime))).map(item => ({ time: Math.floor(item.openTime / 1000), open: Number(item.open), high: Number(item.high), low: Number(item.low), close: Number(item.close) })));
+        indicatorSeries.forEach(series => chart.removeSeries(series)); indicatorSeries = [];
+        indicators.forEach((indicator, indicatorIndex) => indicator.series.forEach(series => { const line = chart.addSeries(LightweightCharts.LineSeries, { color: ['#2563eb', '#9333ea', '#ea580c'][indicatorIndex % 3], lineWidth: 2 }); line.setData(series.values.filter(point => point.value !== null && point.value !== undefined).map(point => ({ time: Math.floor(point.openTime / 1000), value: Number(point.value) }))); indicatorSeries.push(line); }));
+        chart.timeScale().fitContent();
         summary.textContent = data.length + ' candles | latest close: ' + data[data.length - 1].close + ' | ' + new Date(data[data.length - 1].closeTime).toISOString();
       }
 
