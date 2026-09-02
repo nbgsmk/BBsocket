@@ -1,8 +1,9 @@
 class PaperBroker {
-  constructor() {
-    this.positions = new Map();
-    this.trades = [];
-    this.nextTradeId = 1;
+  constructor({ repository } = {}) {
+    this.repository = repository;
+    this.positions = new Map((repository ? repository.getPositions() : []).map(position => [position.instrument, position]));
+    this.trades = repository ? repository.getTrades() : [];
+    this.nextTradeId = this.trades.reduce((max, trade) => Math.max(max, Number(String(trade.tradeId).replace('paper-', '')) || 0), 0) + 1;
   }
 
   getPosition(instrument, marketPrice) {
@@ -29,7 +30,10 @@ class PaperBroker {
     if (!Number.isFinite(price)) throw new Error('Paper trade price must be numeric');
     const existing = this.positions.get(instrument);
     if (decision.action === 'HOLD') {
-      if (existing) existing.unrealizedPnl = this.unrealizedPnl(existing, price);
+      if (existing) {
+        existing.unrealizedPnl = this.unrealizedPnl(existing, price);
+        if (this.repository) this.repository.savePosition(existing);
+      }
       return { status: 'held', position: this.getPosition(instrument, price) };
     }
     if (decision.action === 'ENTER') {
@@ -39,6 +43,7 @@ class PaperBroker {
       if (!['long', 'short'].includes(side) || !Number.isFinite(size) || size <= 0) throw new Error('Paper trade requires a valid side and positive size');
       const position = { instrument, exists: true, side, size, entryPrice: price, entryTime: candle.openTime, unrealizedPnl: 0 };
       this.positions.set(instrument, position);
+      if (this.repository) this.repository.savePosition(position);
       return { status: 'opened', position: { ...position } };
     }
     if (decision.action === 'EXIT') {
@@ -47,6 +52,10 @@ class PaperBroker {
       const trade = { tradeId: 'paper-' + this.nextTradeId++, instrument, side: existing.side, size: existing.size, entryPrice: existing.entryPrice, exitPrice: price, entryTime: existing.entryTime, exitTime: candle.openTime, realizedPnl };
       this.trades.push(trade);
       this.positions.delete(instrument);
+      if (this.repository) {
+        this.repository.saveTrade(trade);
+        this.repository.deletePosition(instrument);
+      }
       return { status: 'closed', trade: { ...trade }, position: this.getPosition(instrument, price) };
     }
     throw new Error('Unsupported paper trade action: ' + decision.action);

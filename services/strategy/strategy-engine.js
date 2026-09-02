@@ -7,16 +7,17 @@ function indicatorKey(specification, seriesName, multiple) {
 }
 
 class StrategyEngine extends EventEmitter {
-  constructor({ strategy, service, broker, getPosition }) {
+  constructor({ strategy, service, broker, getPosition, repository }) {
     super();
     if (!strategy || !service || typeof service.subscribeCandles !== 'function') throw new Error('Strategy engine requires a strategy and candle service');
     this.strategy = strategy;
     this.service = service;
     this.broker = broker;
+    this.repository = repository;
     this.getPosition = getPosition || (broker ? ((instrument, price) => broker.getPosition(instrument, price)) : (() => ({ exists: false, side: null, size: 0 })));
     this.specifications = parseIndicatorSpecifications(strategy.indicators.join(','));
-    this.lastProcessed = new Set();
-    this.decisions = [];
+    this.decisions = repository ? repository.getDecisions() : [];
+    this.lastProcessed = new Set(this.decisions.map(decision => decision.decisionKey).filter(Boolean));
     this.unsubscribe = null;
   }
 
@@ -79,7 +80,9 @@ class StrategyEngine extends EventEmitter {
       entry: entryEvaluation,
       exit: exitEvaluation
     };
+    decision.decisionKey = key;
     if (this.broker) decision.execution = this.broker.execute(decision, currentCandle);
+    if (this.repository) this.repository.saveDecision(decision);
     this.decisions.push(decision);
     if (this.decisions.length > 1000) this.decisions.shift();
     this.emit('decision', decision);

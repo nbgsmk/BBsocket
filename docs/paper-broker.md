@@ -62,6 +62,15 @@ GET /api/v1/paper/trades?instrument=btcusdt&limit=100
 
 These endpoints are read-only. Results are snapshots and do not allow callers to modify broker state.
 
+## Persistence
+
+When an enabled strategy runtime is configured, decisions, open positions, and completed trades are stored in SQLite. Set `STRATEGY_DATA_PATH` to choose the database location; the default is `data/strategy.sqlite`. Mount that directory as a Docker volume so state survives container replacement:
+
+```yaml
+volumes:
+  - ./data:/app/data
+```
+
 ## Current limitations
 
-Broker state is process-local and is lost on restart or container replacement. The current model does not include fees, slippage, leverage, margin, liquidation, partial fills, or order-book execution. SQLite or another persistent store can be added later without changing the strategy condition format.
+The in-memory broker remains available for isolated tests, but the application runtime uses SQLite when a strategy is enabled. The current model does not include fees, slippage, leverage, margin, liquidation, partial fills, or order-book execution.
