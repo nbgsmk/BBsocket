@@ -70,6 +70,16 @@ The Binance implementation is located at `services/exchanges/binance/service.js`
 
 Implement a real Deribit adapter using the official Deribit API documentation. It should implement the same exchange-service interface, normalize Deribit market data into the shared candle format, and reuse the existing per-symbol history, aggregation, incomplete-candle, and live-SSE behavior. After that, add versioned Deribit routes.
 
+### Deribit strategy reminder
+
+This is a coarse planning reminder, not an implementation guide:
+
+- Keep Binance as the primary venue for broad futures volume, liquidity, and order-flow analysis.
+- Treat Deribit futures as a complementary BTC/ETH venue for basis, funding, hedging, and cross-venue comparisons.
+- Use Deribit primarily for options analysis, including implied volatility, skew, term structure, open interest, and expiry positioning.
+- Do not combine raw Binance and Deribit volumes without normalizing contract size, settlement currency, and volume units.
+- The most valuable long-term analysis may be the relationship between Deribit options positioning and Binance futures/perpetual flows.
+
 ### Deferred cross-exchange endpoints
 
 Cross-exchange retrieval is planned but intentionally deferred for a later decision. A possible endpoint is:
