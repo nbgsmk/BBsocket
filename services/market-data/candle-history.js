@@ -30,7 +30,7 @@ class CandleHistory extends EventEmitter {
     if (history.length > this.maxCandles) this.histories[key] = history.slice(-this.maxCandles);
   }
 
-  update(candle) {
+  update(candle, source = 'live') {
     if (candle.candlestickIsClosed) {
       delete this.current[candle.instrument || candle.symbol];
       this.add(candle);
@@ -39,7 +39,7 @@ class CandleHistory extends EventEmitter {
       this.ensureSymbol(key);
       this.current[key] = candle;
     }
-    this.emit('candle', candle);
+    this.emit('candle', { ...candle, eventSource: source });
   }
 
   candles(symbol, limit) {

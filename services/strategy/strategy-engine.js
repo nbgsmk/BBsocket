@@ -22,7 +22,12 @@ class StrategyEngine extends EventEmitter {
   }
 
   start() {
-    if (!this.unsubscribe) this.unsubscribe = this.service.subscribeCandles(candle => this.handleCandle(candle));
+    if (!this.unsubscribe && typeof this.service.subscribeAggregatedCandles === 'function') {
+      const instrument = this.strategy.instruments[0];
+      const existing = this.service.aggregateCandles(instrument, this.strategy.aggregation, false);
+      const lastOpenTime = existing.length ? existing[existing.length - 1].openTime : null;
+      this.unsubscribe = this.service.subscribeAggregatedCandles(instrument, this.strategy.aggregation, { includeIncomplete: false, onBackfill: 'ignore', lastOpenTime }, event => this.handleCandle(event.candle, event));
+    } else if (!this.unsubscribe) this.unsubscribe = this.service.subscribeCandles(candle => this.handleCandle(candle));
     return this;
   }
 
@@ -31,7 +36,7 @@ class StrategyEngine extends EventEmitter {
     this.unsubscribe = null;
   }
 
-  handleCandle(candle) {
+  handleCandle(candle, event = {}) {
     if (!this.strategy.enabled) return;
     if (!candle || !candle.candlestickIsClosed) return;
     const instrument = String(candle.instrument || candle.symbol || '').toLowerCase();

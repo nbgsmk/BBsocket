@@ -150,6 +150,38 @@ test('keeps an open source candle out of history but includes it in live aggrega
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
+test('publishes each completed aggregate once and ignores backfill events when requested', () => {
+  const { configPath, directory } = tempConfig();
+  const service = new BinanceSocket({ configPath });
+  const events = [];
+  const unsubscribe = service.subscribeAggregatedCandles('btcusd_perpetual', '1m', { includeIncomplete: false, onBackfill: 'ignore' }, event => events.push(event));
+  const first = JSON.parse(closedMessage(1_700_000_000_000));
+  service.history.update({ instrument: 'btcusd_perpetual', openTime: 1_700_000_000_000, closeTime: 1_700_000_059_999, open: '100', high: '101', low: '99', close: '100', volume: '1', quoteVolume: '100', trades: 1, candlestickIsClosed: true }, 'backfill');
+  assert.equal(events.length, 0);
+  service.handleMessage(JSON.stringify(first));
+  assert.equal(events.length, 1);
+  service.handleMessage(JSON.stringify(first));
+  assert.equal(events.length, 1);
+  unsubscribe();
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
+test('can seed the last completed aggregate timestamp for a live subscriber', () => {
+  const { configPath, directory } = tempConfig();
+  const service = new BinanceSocket({ configPath });
+  const openTime = 1_700_000_000_000;
+  const candle = { instrument: 'btcusd_perpetual', openTime, closeTime: openTime + 59999, open: '100', high: '101', low: '99', close: '100', volume: '1', quoteVolume: '100', trades: 1, candlestickIsClosed: true };
+  service.history.update(candle);
+  const events = [];
+  const unsubscribe = service.subscribeAggregatedCandles('btcusd_perpetual', '1m', { includeIncomplete: false, lastOpenTime: openTime }, event => events.push(event));
+  service.history.update({ ...candle, close: '102' });
+  assert.equal(events.length, 0);
+  service.history.update({ ...candle, openTime: openTime + 60000, closeTime: openTime + 119999 });
+  assert.equal(events.length, 1);
+  unsubscribe();
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
 test('persists connection state and stops reconnecting after disconnect', () => {
   const { configPath, directory } = tempConfig();
   class FakeWebSocket {

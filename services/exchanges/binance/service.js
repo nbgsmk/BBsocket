@@ -150,7 +150,7 @@ class BinanceSocket extends ExchangeService {
       endTime = Number(rows[0][0]) - 1;
     }
     candles.sort((a, b) => a.openTime - b.openTime);
-    candles.slice(-this.config.maxCandlesticksInMemory).forEach(candle => this.history.update(candle));
+    candles.slice(-this.config.maxCandlesticksInMemory).forEach(candle => this.history.update(candle, 'backfill'));
   }
 
   async fetchHistoryRequest(url) {
@@ -324,6 +324,26 @@ class BinanceSocket extends ExchangeService {
 
   subscribeCandles(listener) {
     return this.history.subscribe(listener);
+  }
+
+  subscribeAggregatedCandles(symbol, aggregation, options = {}, listener) {
+    const includeIncomplete = options.includeIncomplete === true;
+    const ignoreBackfill = options.onBackfill === 'ignore';
+    let lastOpenTime = options.lastOpenTime === undefined ? null : options.lastOpenTime;
+    const send = sourceCandle => {
+      if (ignoreBackfill && sourceCandle.eventSource === 'backfill') return;
+      const aggregates = this.aggregateCandles(symbol, aggregation, includeIncomplete);
+      if (!aggregates.length) return;
+      const candle = aggregates[aggregates.length - 1];
+      if (!includeIncomplete && (!candle.candlestickIsClosed || candle.openTime === lastOpenTime)) return;
+      if (!candle.candlestickIsClosed && !includeIncomplete) return;
+      lastOpenTime = candle.openTime;
+      listener({ exchange: 'binance', marketType: this.marketType, instrument: symbol, aggregation, candle, eventSource: sourceCandle.eventSource || 'live' });
+    };
+    const unsubscribe = this.history.subscribe(sourceCandle => {
+      if (String(sourceCandle.instrument || '').toLowerCase() === String(symbol).toLowerCase()) send(sourceCandle);
+    });
+    return unsubscribe;
   }
 }
 

@@ -59,3 +59,25 @@ test('uses current position to select exit action', () => {
   service.push(candle(1, 80));
   assert.equal(decision.action, 'EXIT');
 });
+
+test('seeds aggregate subscription after backfill without reprocessing the latest candle', () => {
+  const candles = [candle(1, 110)];
+  let callback;
+  let options;
+  const service = {
+    subscribeCandles() { return () => {}; },
+    aggregateCandles() { return candles.slice(); },
+    subscribeAggregatedCandles(_symbol, _aggregation, suppliedOptions, listener) {
+      options = suppliedOptions;
+      callback = listener;
+      return () => { callback = null; };
+    }
+  };
+  const engine = new StrategyEngine({ strategy: strategy(), service });
+  let count = 0;
+  engine.on('decision', () => { count += 1; });
+  engine.start();
+  assert.equal(options.lastOpenTime, 1);
+  callback({ candle: candle(2, 110) });
+  assert.equal(count, 1);
+});
