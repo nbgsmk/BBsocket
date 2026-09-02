@@ -52,6 +52,13 @@ function readConfig(configPath = CONFIG_PATH, marketType = 'coin-m') {
   if (!Number.isInteger(config.maxCandlesticksInMemory) || config.maxCandlesticksInMemory < 1) {
     throw new Error('maxCandlesticksInMemory must be a positive integer');
   }
+  if (config.initialCandlesInMemory === undefined) {
+    config.initialCandlesInMemory = config.maxCandlesticksInMemory;
+  } else if (!Number.isInteger(config.initialCandlesInMemory) || config.initialCandlesInMemory < 1) {
+    throw new Error('initialCandlesInMemory must be a positive integer');
+  } else {
+    config.initialCandlesInMemory = Math.min(config.initialCandlesInMemory, config.maxCandlesticksInMemory);
+  }
   if (typeof config.fetchHistoricalCandlesOnStart === 'string') {
     const fetchHistory = config.fetchHistoricalCandlesOnStart.trim().toLowerCase();
     if (fetchHistory !== 'true' && fetchHistory !== 'false') {
@@ -138,8 +145,8 @@ class BinanceSocket extends ExchangeService {
     const instrument = symbolForStream(tickerSymbol);
     const candles = [];
     let endTime = Date.now();
-    while (candles.length < this.config.maxCandlesticksInMemory) {
-      const limit = Math.min(1500, this.config.maxCandlesticksInMemory - candles.length);
+    while (candles.length < this.config.initialCandlesInMemory) {
+      const limit = Math.min(1500, this.config.initialCandlesInMemory - candles.length);
       const url = this.restUrl() + '?' + this.restParameters(tickerSymbol, endTime, limit);
       const response = await this.fetchHistoryRequest(url);
       const rows = await response.json();
@@ -150,7 +157,7 @@ class BinanceSocket extends ExchangeService {
       endTime = Number(rows[0][0]) - 1;
     }
     candles.sort((a, b) => a.openTime - b.openTime);
-    candles.slice(-this.config.maxCandlesticksInMemory).forEach(candle => this.history.update(candle, 'backfill'));
+    candles.slice(-this.config.initialCandlesInMemory).forEach(candle => this.history.update(candle, 'backfill'));
   }
 
   async fetchHistoryRequest(url) {
@@ -313,6 +320,7 @@ class BinanceSocket extends ExchangeService {
       webSocketUrl: this.streamUrl(),
       exchangeCandlestickStreamInterval: this.config.exchangeCandlestickStreamInterval,
 	  maxCandlesticksInMemory: this.config.maxCandlesticksInMemory,
+      initialCandlesInMemory: this.config.initialCandlesInMemory,
       fetchHistoricalCandlesOnStart: this.config.fetchHistoricalCandlesOnStart,
       candles: this.history.counts()
     };

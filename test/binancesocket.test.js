@@ -17,8 +17,8 @@ function tempConfig(overrides = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'binancesocket-'));
   const configPath = path.join(directory, 'config.json');
   fs.writeFileSync(configPath, JSON.stringify({
-    coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: false, connectOnStart: false },
-    usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT', 'ETHUSDT'], maxCandlesticksInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: false, connectOnStart: false },
+    coinM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSD_PERPETUAL', 'ETHUSD_PERPETUAL'], maxCandlesticksInMemory: 1000, initialCandlesInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: false, connectOnStart: false },
+    usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT', 'ETHUSDT'], maxCandlesticksInMemory: 1000, initialCandlesInMemory: 1000, exchangeCandlestickStreamInterval: '1m', fetchHistoricalCandlesOnStart: false, connectOnStart: false },
     ...overrides
   }));
   return { directory, configPath };
@@ -59,6 +59,48 @@ test('accepts case-insensitive historical candle startup states', () => {
   const service = new BinanceSocket({ configPath, marketType: 'usd-m' });
   assert.equal(service.config.fetchHistoricalCandlesOnStart, true);
   assert.equal(service.status().fetchHistoricalCandlesOnStart, true);
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
+test('defaults and caps the initial historical candle count', () => {
+  const defaultConfig = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 7, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
+  const defaultService = new BinanceSocket({ configPath: defaultConfig.configPath, marketType: 'usd-m' });
+  assert.equal(defaultService.config.initialCandlesInMemory, 7);
+  fs.rmSync(defaultConfig.directory, { recursive: true, force: true });
+
+  const cappedConfig = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 7, initialCandlesInMemory: 20, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
+  const cappedService = new BinanceSocket({ configPath: cappedConfig.configPath, marketType: 'usd-m' });
+  assert.equal(cappedService.config.initialCandlesInMemory, 7);
+  assert.equal(cappedService.status().initialCandlesInMemory, 7);
+  fs.rmSync(cappedConfig.directory, { recursive: true, force: true });
+});
+
+test('rejects invalid initial historical candle counts', () => {
+  for (const value of [0, -1, 1.5, 'seven']) {
+    const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 7, initialCandlesInMemory: value, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
+    assert.throws(() => new BinanceSocket({ configPath, marketType: 'usd-m' }), /initialCandlesInMemory must be a positive integer/);
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('uses the effective initial count for historical backfill requests', async () => {
+  const { configPath, directory } = tempConfig({ usdM: { host: 'dstream.binance.com', tickerSymbols: ['BTCUSDT'], maxCandlesticksInMemory: 5, initialCandlesInMemory: 2, exchangeCandlestickStreamInterval: '1m', connectOnStart: false } });
+  const requests = [];
+  const rows = [
+    [1, '100', '101', '99', '100', '1', 59999, '100', 1],
+    [60001, '100', '101', '99', '100', '1', 119999, '100', 1]
+  ];
+  const service = new BinanceSocket({
+    configPath,
+    marketType: 'usd-m',
+    fetch: async url => {
+      requests.push(url);
+      return { ok: true, json: async () => requests.length === 1 ? rows : [] };
+    }
+  });
+  await service.fetchHistoryForSymbol('BTCUSDT');
+  assert.match(requests[0], /[?&]limit=2(?:&|$)/);
+  assert.equal(service.candles('btcusdt').length, 2);
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
