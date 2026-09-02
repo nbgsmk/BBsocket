@@ -29,6 +29,19 @@
       <button type="button" data-action="disconnect">/disconnect</button>
       <button type="button" data-action="status">/status</button>
       <button type="button" id="live-toggle">Enable live data</button>
+      <p>
+        <label>
+          <input type="checkbox" id="indicator-toggle" />
+          Include indicator
+        </label>
+        <label for="indicator-type">Type:</label>
+        <select id="indicator-type">
+          <option value="sma">SMA</option>
+          <option value="ema">EMA</option>
+        </select>
+        <label for="indicator-period">Period:</label>
+        <input type="number" id="indicator-period" min="1" step="1" value="20" />
+      </p>
       <p id="message" role="alert"></p>
       <pre id="response" aria-live="polite">Click a button to see the JSON response.</pre>
       <div class="live-heading">
@@ -49,7 +62,11 @@
       const formatLabel = document.getElementById('format-label');
       const message = document.getElementById('message');
       const marketType = document.getElementById('market-type');
+      const indicatorToggle = document.getElementById('indicator-toggle');
+      const indicatorType = document.getElementById('indicator-type');
+      const indicatorPeriod = document.getElementById('indicator-period');
       let liveSource = null;
+      let currentInstrument = null;
       const liveHistory = [];
       const maxLiveEntries = 300;
 
@@ -80,6 +97,9 @@
           const body = await result.json();
           if (!result.ok) throw new Error(body.error || 'Request failed');
           if (body.webSocketUrl) websocketUrl.textContent = body.webSocketUrl;
+          if (Array.isArray(body.tickerSymbols) && body.tickerSymbols.length) {
+            currentInstrument = body.tickerSymbols[0].toLowerCase();
+          }
           response.textContent = JSON.stringify(body, null, 2);
         } catch (error) {
           response.textContent = '';
@@ -100,7 +120,27 @@
         }
 
         liveResponse.textContent = 'Waiting for socket data...';
-        liveSource = new EventSource(apiPath('live'));
+        let liveUrl = apiPath('live');
+        if (indicatorToggle.checked) {
+          const period = Number(indicatorPeriod.value);
+          if (!Number.isInteger(period) || period < 1) {
+            message.textContent = 'Indicator period must be a positive integer.';
+            liveResponse.textContent = 'Live data is disabled.';
+            return;
+          }
+          if (!currentInstrument) {
+            message.textContent = 'Load status before enabling indicator data.';
+            liveResponse.textContent = 'Live data is disabled.';
+            return;
+          }
+          const query = new URLSearchParams({
+            instrument: currentInstrument,
+            aggregation: '1m',
+            indicators: indicatorType.value + ':' + period
+          });
+          liveUrl = apiPath('candles/live') + '?' + query.toString();
+        }
+        liveSource = new EventSource(liveUrl);
         liveSource.onmessage = event => {
           try {
             liveHistory.push({ raw: event.data, parsed: JSON.parse(event.data) });

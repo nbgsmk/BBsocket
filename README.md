@@ -388,6 +388,8 @@ The reusable SMA and EMA calculations are implemented in `services/market-data/i
 
 When `indicators` is omitted, the existing candle-only live-event behavior remains unchanged. The same request syntax and response structure are used for Coin-M and USD-M services.
 
+The dashboard provides an optional indicator toggle, indicator type, and period input. When enabled, it opens the aggregated candle SSE endpoint for the first configured instrument using the selected period.
+
 Example with curl:
 
 ```bash

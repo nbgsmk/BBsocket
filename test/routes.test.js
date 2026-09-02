@@ -56,6 +56,8 @@ test('dashboard template contains controls and formatting toggle', () => {
   assert.match(template, /id="live-toggle"/);
   assert.match(template, /id="format-toggle"/);
   assert.match(template, /id="market-type"/);
+  assert.match(template, /id="indicator-period"/);
+  assert.match(template, /new URLSearchParams/);
   assert.match(template, /api\/v1\/binance\/'.*marketType\.value/);
   assert.match(template, /JSON\.stringify\(entry\.parsed\)/);
 });
