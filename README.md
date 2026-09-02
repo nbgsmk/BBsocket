@@ -225,6 +225,8 @@ PORT=8080 npm start
 
 ## HTTP API
 
+Strategy and paper-trading behavior is documented in [docs/strategy-engine.md](docs/strategy-engine.md) and [docs/paper-broker.md](docs/paper-broker.md).
+
 All responses are JSON except the dashboard HTML page and the live Server-Sent Events stream.
 
 ### Dashboard
