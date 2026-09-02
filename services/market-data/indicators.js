@@ -76,9 +76,4 @@ function calculateIndicators(candles, specifications) {
   }));
 }
 
-module.exports = {
-  calculateSma,
-  calculateEma,
-  parseIndicatorSpecifications,
-  calculateIndicators
-};
+module.exports = { calculateSma, calculateEma };

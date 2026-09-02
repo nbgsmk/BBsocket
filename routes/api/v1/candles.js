@@ -1,5 +1,5 @@
 const express = require('express');
-const { parseIndicatorSpecifications, calculateIndicators } = require('../../../services/market-data/indicators');
+const { parseIndicatorSpecifications, calculateIndicators } = require('../../../services/market-data/indicator-registry');
 
 module.exports = function createCandleRoutes(service) {
   const router = express.Router();
@@ -24,7 +24,10 @@ module.exports = function createCandleRoutes(service) {
       const candles = Number.isInteger(limit) && limit > 0 ? result.slice(-limit) : result;
       const limitedIndicators = indicatorValues.map(indicator => ({
         ...indicator,
-        values: Number.isInteger(limit) && limit > 0 ? indicator.values.slice(-limit) : indicator.values
+        series: indicator.series.map(series => ({
+          ...series,
+          values: Number.isInteger(limit) && limit > 0 ? series.values.slice(-limit) : series.values
+        }))
       }));
       return res.json({
         instrument: requested,
@@ -70,8 +73,11 @@ module.exports = function createCandleRoutes(service) {
 
       const indicatorValues = calculateIndicators(candles, indicators).map(indicator => ({
         type: indicator.type,
-        period: indicator.period,
-        value: indicator.values[indicator.values.length - 1].value
+        parameters: indicator.parameters,
+        series: indicator.series.map(series => ({
+          name: series.name,
+          value: series.values[series.values.length - 1].value
+        }))
       }));
       res.write('data: ' + JSON.stringify({
         eventType: 'candlestickUpdate',
