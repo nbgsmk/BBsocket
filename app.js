@@ -29,8 +29,8 @@ app.use('/dashboard', dashboardRouter);
 app.use('/users', usersRouter);
 app.use('/api/v1', createApiV1Routes({ coinM: binanceCoinMSocket, usdM: binanceUsdMSocket }));
 
-if (binanceCoinMSocket.config.initiallyConnected) binanceCoinMSocket.connect();
-if (binanceUsdMSocket.config.initiallyConnected) binanceUsdMSocket.connect();
+binanceCoinMSocket.initialize();
+binanceUsdMSocket.initialize();
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

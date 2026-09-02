@@ -6,8 +6,9 @@
       "BTCUSD_NEXT_QUARTER",
       "ETHUSD_PERPETUAL"
     ],
-    "maxCandlesticksInMemory": 1000,
+    "maxCandlesticksInMemory": 120,
     "exchangeCandlestickStreamInterval": "1m",
+    "fetchHistoryOnStart": true,
     "initiallyConnected": true
   },
   "usdM": {
@@ -16,8 +17,9 @@
       "BTCUSDT",
       "ETHUSDT"
     ],
-    "maxCandlesticksInMemory": 1000,
+    "maxCandlesticksInMemory": 130,
     "exchangeCandlestickStreamInterval": "1m",
+    "fetchHistoryOnStart": true,
     "initiallyConnected": true
   }
 }

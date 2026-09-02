@@ -34,6 +34,17 @@ function readConfig(configPath = CONFIG_PATH, marketType = 'coin-m') {
   if (!Number.isInteger(config.maxCandlesticksInMemory) || config.maxCandlesticksInMemory < 1) {
     throw new Error('maxCandlesticksInMemory must be a positive integer');
   }
+  if (typeof config.fetchHistoryOnStart === 'string') {
+    const fetchHistory = config.fetchHistoryOnStart.trim().toLowerCase();
+    if (fetchHistory !== 'true' && fetchHistory !== 'false') {
+      throw new Error(configSection(marketType) + '.fetchHistoryOnStart must be true or false');
+    }
+    config.fetchHistoryOnStart = fetchHistory === 'true';
+  } else if (config.fetchHistoryOnStart === undefined) {
+    config.fetchHistoryOnStart = false;
+  } else if (typeof config.fetchHistoryOnStart !== 'boolean') {
+    throw new Error(configSection(marketType) + '.fetchHistoryOnStart must be true or false');
+  }
   if (!INTERVALS.has(config.exchangeCandlestickStreamInterval)) {
     throw new Error('Unsupported Binance interval: ' + config.exchangeCandlestickStreamInterval);
   }
@@ -71,10 +82,78 @@ class BinanceSocket extends ExchangeService {
     this.configPath = options.configPath || CONFIG_PATH;
     this.config = readConfig(this.configPath, this.marketType);
     this.WebSocket = options.WebSocket || WebSocket;
+    this.fetch = options.fetch || global.fetch;
+    if (typeof this.fetch !== 'function') throw new Error('A fetch implementation is required');
     this.socket = null;
     this.history = new CandleHistory(this.config.maxCandlesticksInMemory, this.config.exchangeCandlestickStreamInterval, this.config.tickerSymbols.map(symbolForStream));
     this.reconnectTimer = null;
     this.reconnectDelay = 1000;
+    this.initializationPromise = null;
+  }
+
+  restUrl() {
+    return 'https://' + (this.marketType === 'coin-m' ? 'dapi.binance.com/dapi/v1/continuousKlines' : 'fapi.binance.com/fapi/v1/klines');
+  }
+
+  restParameters(symbol, endTime, limit) {
+    const parameters = new URLSearchParams({ interval: this.config.exchangeCandlestickStreamInterval, limit: String(limit), endTime: String(endTime) });
+    if (this.marketType === 'coin-m') {
+      const [pair, contractType] = symbol.split('_');
+      parameters.set('pair', pair);
+      parameters.set('contractType', contractType);
+    } else {
+      parameters.set('symbol', symbol);
+    }
+    return parameters;
+  }
+
+  normalizeRestCandle(row, instrument) {
+    return {
+      symbol: publicSymbol(instrument), instrument, interval: this.config.exchangeCandlestickStreamInterval,
+      openTime: row[0], closeTime: row[6], open: row[1], high: row[2], low: row[3], close: row[4],
+      volume: row[5], quoteVolume: row[7], trades: row[8], candlestickIsClosed: true
+    };
+  }
+
+  async fetchHistoryForSymbol(tickerSymbol) {
+    const instrument = symbolForStream(tickerSymbol);
+    const candles = [];
+    let endTime = Date.now();
+    while (candles.length < this.config.maxCandlesticksInMemory) {
+      const limit = Math.min(1500, this.config.maxCandlesticksInMemory - candles.length);
+      const url = this.restUrl() + '?' + this.restParameters(tickerSymbol, endTime, limit);
+      const response = await this.fetch(url);
+      if (!response.ok) throw new Error('Binance history request failed with HTTP ' + response.status);
+      const rows = await response.json();
+      if (!Array.isArray(rows) || rows.length === 0) break;
+      const completed = rows.filter(row => Array.isArray(row) && row.length >= 9 && Number(row[6]) < Date.now());
+      candles.unshift(...completed.map(row => this.normalizeRestCandle(row, instrument)));
+      if (rows.length < limit || Number(rows[0][0]) <= 0) break;
+      endTime = Number(rows[0][0]) - 1;
+    }
+    candles.sort((a, b) => a.openTime - b.openTime);
+    candles.slice(-this.config.maxCandlesticksInMemory).forEach(candle => this.history.update(candle));
+  }
+
+  async fetchHistory() {
+    for (const symbol of this.config.tickerSymbols) {
+      try {
+        await this.fetchHistoryForSymbol(symbol);
+      } catch (error) {
+        console.error('Binance history fetch failed for ' + symbol + ':', error.message);
+      }
+    }
+  }
+
+  initialize() {
+    if (this.initializationPromise) return this.initializationPromise;
+    this.initializationPromise = (async () => {
+      if (this.config.fetchHistoryOnStart) {
+        await this.fetchHistory();
+      }
+      if (this.config.initiallyConnected) this.connect();
+    })();
+    return this.initializationPromise;
   }
 
   streamUrl() {
@@ -180,8 +259,9 @@ class BinanceSocket extends ExchangeService {
       socketOpen: Boolean(this.socket && this.socket.readyState === this.WebSocket.OPEN),
       tickerSymbols: this.config.tickerSymbols,
       webSocketUrl: this.streamUrl(),
-	  exchangeCandlestickStreamInterval: this.config.exchangeCandlestickStreamInterval,
+      exchangeCandlestickStreamInterval: this.config.exchangeCandlestickStreamInterval,
 	  maxCandlesticksInMemory: this.config.maxCandlesticksInMemory,
+      fetchHistoryOnStart: this.config.fetchHistoryOnStart,
       candles: this.history.counts()
     };
   }
