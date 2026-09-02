@@ -268,6 +268,21 @@ function calculateVolumeEma(candles, period) {
   return calculateEma(candles.map(candle => ({ ...candle, close: volumeValue(candle) })), period);
 }
 
+function calculateVwma(candles, period) {
+  validatePeriod(period);
+  if (!Array.isArray(candles)) throw new Error('Candles must be an array');
+  return candles.map((candle, index) => {
+    if (index < period - 1) return point(candle, null);
+    const window = candles.slice(index - period + 1, index + 1);
+    const entries = window.map(item => ({ price: closeValue(item), volume: volumeValue(item) }));
+    if (entries.some(entry => entry.price === null || entry.volume === null)) return point(candle, null);
+    const totalVolume = entries.reduce((sum, entry) => sum + entry.volume, 0);
+    if (totalVolume === 0) return point(candle, null);
+    const priceVolume = entries.reduce((sum, entry) => sum + entry.price * entry.volume, 0);
+    return point(candle, priceVolume / totalVolume);
+  });
+}
+
 function calculateBollingerBands(candles, period, standardDeviations) {
   validatePeriod(period);
   if (!Number.isFinite(standardDeviations) || standardDeviations < 0) {
@@ -294,5 +309,5 @@ function calculateBollingerBands(candles, period, standardDeviations) {
 module.exports = {
   calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap,
   calculateStochastic, calculateAdx, calculateMacd, calculateVolumeSma,
-  calculateVolumeEma, calculateBollingerBands
+  calculateVolumeEma, calculateVwma, calculateBollingerBands
 };

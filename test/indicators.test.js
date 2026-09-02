@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd, calculateVolumeSma, calculateVolumeEma, calculateBollingerBands } = require('../services/market-data/indicators');
+const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd, calculateVolumeSma, calculateVolumeEma, calculateVwma, calculateBollingerBands } = require('../services/market-data/indicators');
 const { parseIndicatorSpecifications, calculateIndicators } = require('../services/market-data/indicator-registry');
 
 function candles(closes) {
@@ -131,4 +131,15 @@ test('calculates volume SMA and EMA from candle volume', () => {
   assert.deepEqual(calculateVolumeSma(input, 2).map(point => point.value), [null, 150, 250]);
   assert.deepEqual(calculateVolumeEma(input, 2).map(point => point.value), [null, 150, 250]);
   assert.deepEqual(parseIndicatorSpecifications('VOLUMESMA:2,VOLUMEEMA:2').map(indicator => indicator.type), ['volumeSma', 'volumeEma']);
+  assert.deepEqual(parseIndicatorSpecifications('BOLLINGER:20:2.5').map(indicator => indicator.parameters), [{ period: 20, standardDeviations: 2.5 }]);
+});
+
+test('calculates rolling VWMA from closing price and volume', () => {
+  const input = [
+    { openTime: 0, close: '10', volume: '1' },
+    { openTime: 60000, close: '20', volume: '3' },
+    { openTime: 120000, close: '30', volume: '2' }
+  ];
+  const result = calculateVwma(input, 2);
+  assert.deepEqual(result.map(point => point.value), [null, 17.5, 24]);
 });

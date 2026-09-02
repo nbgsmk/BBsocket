@@ -277,7 +277,7 @@ GET /api/v1/binance/coin-m/candles/snapshot?instrument=btcusd_perpetual
 GET /api/v1/binance/coin-m/candles/snapshot?instrument=ethusd_perpetual&limit=100
 GET /api/v1/binance/coin-m/candles/snapshot?instrument=btcusd_perpetual&aggregation=5m&limit=100
 GET /api/v1/binance/usd-m/candles/snapshot?instrument=btcusdt&aggregation=15m&includeIncomplete=true
-GET /api/v1/binance/usd-m/candles/snapshot?instrument=btcusdt&aggregation=15m&indicators=sma:20,ema:50,rsi:14,atr:14,vwap,adx:14,stochastic:14:3:3,macd:12:26:9,bollinger:20:2,volumeSma:20,volumeEma:20
+GET /api/v1/binance/usd-m/candles/snapshot?instrument=btcusdt&aggregation=15m&indicators=sma:20,ema:50,rsi:14,atr:14,vwap,vwma:20,adx:14,stochastic:14:3:3,macd:12:26:9,bollinger:20:2,volumeSma:20,volumeEma:20
 ```
 
 The `instrument` query parameter must contain the full configured instrument, lowercased in the URL. Coin-M uses names such as `instrument=btcusd_perpetual`; USD-M uses names such as `instrument=btcusdt`.
@@ -288,7 +288,7 @@ The optional `aggregation` parameter combines the stored subscription candles in
 
 Set `includeIncomplete=true` to include the current in-progress aggregate in the HTTP snapshot. It is marked with `candlestickIsClosed: false` and is built from the latest live 1-minute update. It is not added to completed history.
 
-The optional `indicators` parameter returns an enriched snapshot containing `instrument`, `aggregation`, `candles`, and an `indicators` array. Period-based indicators use the format `type:period`, separated by commas, for example `indicators=sma:20,ema:50`; parameterless indicators such as VWAP use only their type, for example `vwap`. Supported indicators are SMA, EMA, RSI, ATR, VWAP, ADX, Stochastic, MACD, Bollinger Bands, volume SMA, and volume EMA. Stochastic uses `stochastic:kPeriod:dPeriod:slowing`, for example `stochastic:14:3:3`; MACD uses `macd:fastPeriod:slowPeriod:signalPeriod`, for example `macd:12:26:9`; Bollinger Bands use `bollinger:period:standardDeviations`, for example `bollinger:20:2`; volume indicators use `volumeSma:period` or `volumeEma:period`. Indicator values are aligned with candle timestamps through `openTime`. The indicator calculation is performed before `limit` is applied, preserving correct warm-up behavior.
+The optional `indicators` parameter returns an enriched snapshot containing `instrument`, `aggregation`, `candles`, and an `indicators` array. Period-based indicators use the format `type:period`, separated by commas, for example `indicators=sma:20,ema:50`; parameterless indicators such as VWAP use only their type, for example `vwap`. Supported indicators are SMA, EMA, RSI, ATR, VWAP, VWMA, ADX, Stochastic, MACD, Bollinger Bands, volume SMA, and volume EMA. Stochastic uses `stochastic:kPeriod:dPeriod:slowing`, for example `stochastic:14:3:3`; MACD uses `macd:fastPeriod:slowPeriod:signalPeriod`, for example `macd:12:26:9`; Bollinger Bands use `bollinger:period:standardDeviations`, for example `bollinger:20:2`; volume indicators use `volumeSma:period` or `volumeEma:period`; VWMA uses `vwma:period`. Indicator values are aligned with candle timestamps through `openTime`. The indicator calculation is performed before `limit` is applied, preserving correct warm-up behavior.
 
 Example candle:
 
@@ -347,7 +347,7 @@ GET /api/v1/binance/usd-m/candles/live?instrument=btcusdt&aggregation=15m&indica
 The parameter is a comma-separated list of indicator specifications. Each specification contains an indicator type and period separated by a colon:
 
 ```text
-indicators=sma:20,sma:50,ema:20,rsi:14,atr:14,vwap,adx:14,stochastic:14:3:3,macd:12:26:9,bollinger:20:2,volumeSma:20,volumeEma:20
+indicators=sma:20,sma:50,ema:20,rsi:14,atr:14,vwap,vwma:20,adx:14,stochastic:14:3:3,macd:12:26:9,bollinger:20:2,volumeSma:20,volumeEma:20
 ```
 
 The combined event format is:
@@ -390,7 +390,7 @@ The combined event format is:
 
 Snapshot indicator objects use the same `type`, `parameters`, and `series` structure, with each series containing a timestamped `values` array. Live events contain the current `value` for each named series. A single-series indicator such as SMA therefore uses `series: [{ "name": "value", ... }]`, while multi-series indicators such as MACD can add named `macd`, `signal`, and `histogram` series.
 
-The reusable indicator calculations are implemented in `services/market-data/indicators.js`, and the `indicators` parameter is supported for both candle snapshots and live SSE events. VWAP is anchored to each UTC day and uses typical price `(high + low + close) / 3` weighted by candle volume. ADX uses Wilder smoothing and exposes `adx`, `plusDi`, and `minusDi` series. Stochastic exposes `k` and `d` series. MACD exposes `macd`, `signal`, and `histogram`; Bollinger Bands expose `middle`, `upper`, and `lower`. Indicator values correlate with candles through `instrument`, `aggregation`, and `openTime`, rather than array position. When there is insufficient history for a requested period, its `value` is `null`. Repeated events with the same `openTime` represent updates to the same live candle. The final event for that candle has `candlestickIsClosed: true`.
+The reusable indicator calculations are implemented in `services/market-data/indicators.js`, and the `indicators` parameter is supported for both candle snapshots and live SSE events. VWAP is anchored to each UTC day and uses typical price `(high + low + close) / 3` weighted by candle volume. VWMA is a rolling close-price average weighted by volume. ADX uses Wilder smoothing and exposes `adx`, `plusDi`, and `minusDi` series. Stochastic exposes `k` and `d` series. MACD exposes `macd`, `signal`, and `histogram`; Bollinger Bands expose `middle`, `upper`, and `lower`. Indicator values correlate with candles through `instrument`, `aggregation`, and `openTime`, rather than array position. When there is insufficient history for a requested period, its `value` is `null`. Repeated events with the same `openTime` represent updates to the same live candle. The final event for that candle has `candlestickIsClosed: true`.
 
 When `indicators` is omitted, the existing candle-only live-event behavior remains unchanged. The same request syntax and response structure are used for Coin-M and USD-M services.
 
@@ -487,3 +487,16 @@ The following settings could be added to `config/server.json` if the application
 - `apiKey`: Credential required for connection-control and status endpoints before exposing the service beyond a trusted local network.
 
 These parameters are documentation only and are not currently read by the application.
+
+## Potential future market-data enhancements
+
+The following order-flow metrics require raw trade or order-book data and are not calculated from the current candlestick streams:
+
+- **Large-trade detection**: identifies trades whose price multiplied by quantity exceeds a configurable notional threshold.
+- **Buy volume versus sell volume**: separates executed volume by aggressive buyer or seller direction.
+- **Cumulative volume delta**: accumulates aggressive buy volume minus aggressive sell volume over a selected session or period.
+- **Trade imbalance**: compares buy and sell volume within a window, commonly `(buy volume - sell volume) / (buy volume + sell volume)`.
+- **Order-book imbalance**: compares displayed bid and ask liquidity across one or more order-book levels.
+- **Depth-weighted mid-price**: estimates a liquidity-weighted midpoint using bid and ask prices and their available quantities.
+
+Trade-based metrics will require individual trade streams. Order-book metrics will require depth or order-book streams. These should eventually be normalized alongside the existing candle data and exposed through separate order-flow resources.
