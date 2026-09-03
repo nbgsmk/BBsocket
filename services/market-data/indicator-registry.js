@@ -1,4 +1,4 @@
-const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd, calculateVolumeSma, calculateVolumeEma, calculateVwma, calculateBollingerBands } = require('./indicators');
+const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd, calculateVolumeSma, calculateVolumeEma, calculateTradeCount, calculateTradeCountSma, calculateTradeCountEma, calculateVwma, calculateBollingerBands } = require('./indicators');
 
 const indicatorRegistry = Object.freeze({
   sma: {
@@ -62,6 +62,18 @@ const indicatorRegistry = Object.freeze({
     paneGroup: 'volume',
     outputSeries: ['value'],
     calculate: (candles, { period }) => ({ value: calculateVolumeEma(candles, period) })
+  },
+  tradeCount: {
+    placement: 'pane', paneGroup: 'volume', parameterNames: [], outputSeries: ['value'],
+    calculate: candles => ({ value: calculateTradeCount(candles) })
+  },
+  tradeCountSma: {
+    placement: 'pane', paneGroup: 'volume', outputSeries: ['value'],
+    calculate: (candles, { period }) => ({ value: calculateTradeCountSma(candles, period) })
+  },
+  tradeCountEma: {
+    placement: 'pane', paneGroup: 'volume', outputSeries: ['value'],
+    calculate: (candles, { period }) => ({ value: calculateTradeCountEma(candles, period) })
   },
   vwma: {
     placement: 'overlay',

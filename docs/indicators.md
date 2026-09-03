@@ -16,6 +16,7 @@ This document describes the indicators currently implemented by the shared marke
 - **Bollinger Bands**: moving average with upper and lower bands based on standard deviation.
 - **Volume SMA**: moving average calculated from candle volume.
 - **Volume EMA**: exponential moving average calculated from candle volume.
+- **Trade count**: number of exchange trades in each candle; `tradeCountSma:period` and `tradeCountEma:period` provide moving averages.
 
 ## Using indicators
 
@@ -217,3 +218,13 @@ A midpoint influenced by available bid and ask quantities:
 ```
 
 Large-trade and buy/sell metrics require individual trade streams. Order-book imbalance and depth-weighted mid-price require depth/order-book streams. Candlestick streams alone are not sufficient for these calculations.
+### Trade count
+
+`tradeCount` plots the number of exchange trades in each candle. `tradeCountSma:period` and `tradeCountEma:period` calculate moving averages of that count. These indicators are grouped in the volume/activity pane.
+
+```yaml
+indicators:
+  - tradeCount
+  - tradeCountSma:20
+  - tradeCountEma:20
+```

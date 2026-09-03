@@ -268,6 +268,19 @@ function calculateVolumeEma(candles, period) {
   return calculateEma(candles.map(candle => ({ ...candle, close: volumeValue(candle) })), period);
 }
 
+function tradeCountValue(candle) {
+  const value = Number(candle && candle.trades);
+  return Number.isFinite(value) ? value : null;
+}
+
+function tradeCountCandles(candles) {
+  return candles.map(candle => ({ ...candle, close: tradeCountValue(candle) }));
+}
+
+function calculateTradeCount(candles) { return candles.map(candle => point(candle, tradeCountValue(candle))); }
+function calculateTradeCountSma(candles, period) { return calculateSma(tradeCountCandles(candles), period); }
+function calculateTradeCountEma(candles, period) { return calculateEma(tradeCountCandles(candles), period); }
+
 function calculateVwma(candles, period) {
   validatePeriod(period);
   if (!Array.isArray(candles)) throw new Error('Candles must be an array');
@@ -310,4 +323,5 @@ module.exports = {
   calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap,
   calculateStochastic, calculateAdx, calculateMacd, calculateVolumeSma,
   calculateVolumeEma, calculateVwma, calculateBollingerBands
+  , calculateTradeCount, calculateTradeCountSma, calculateTradeCountEma
 };

@@ -28,7 +28,7 @@
       <label>Instrument <select id="instrument"></select></label>
       <label>Aggregation <select id="aggregation"><option>1m</option><option>5m</option><option>15m</option><option>1h</option></select></label>
       <label>Limit <input id="limit" type="number" min="1" max="1000" value="300" /></label>
-      <label>Indicator <select id="indicator"><option value="">None</option><option value="sma:20">SMA 20</option><option value="ema:20">EMA 20</option><option value="rsi:14">RSI 14</option><option value="volumeSma:20">Volume SMA 20</option></select></label>
+      <label>Indicator <select id="indicator"><option value="">None</option><option value="sma:20">SMA 20</option><option value="ema:20">EMA 20</option><option value="rsi:14">RSI 14</option><option value="volumeSma:20">Volume SMA 20</option><option value="tradeCount">Trades</option><option value="tradeCountSma:20">Trades SMA 20</option><option value="tradeCountEma:20">Trades EMA 20</option></select></label>
       <button type="button" id="load">Load chart</button>
       <button type="button" id="live">Enable live updates</button>
       <p id="message" role="alert"></p>
@@ -152,7 +152,7 @@
       }
 
       function indicatorLabel(indicator) {
-        const names = { volume: 'Volume', sma: 'SMA', ema: 'EMA', rsi: 'RSI', atr: 'ATR', vwap: 'VWAP', vwma: 'VWMA', adx: 'ADX', stochastic: 'Stochastic', macd: 'MACD', bollinger: 'Bollinger Bands', volumeSma: 'Volume SMA', volumeEma: 'Volume EMA' };
+        const names = { volume: 'Volume', tradeCount: 'Trades', tradeCountSma: 'Trades SMA', tradeCountEma: 'Trades EMA', sma: 'SMA', ema: 'EMA', rsi: 'RSI', atr: 'ATR', vwap: 'VWAP', vwma: 'VWMA', adx: 'ADX', stochastic: 'Stochastic', macd: 'MACD', bollinger: 'Bollinger Bands', volumeSma: 'Volume SMA', volumeEma: 'Volume EMA' };
         const argumentsList = Object.keys(indicator.parameters || {}).sort().map(name => indicator.parameters[name]);
         return (names[indicator.type] || indicator.type.toUpperCase()) + (argumentsList.length ? ' (' + argumentsList.join(', ') + ')' : '');
       }
@@ -264,7 +264,7 @@
         const paneIndexes = new Map();
         const paneIndicators = new Map();
         let nextPaneIndex = 1;
-        const volumeIndicators = indicators.filter(item => item.paneGroup === 'volume' || item.type === 'volumeSma' || item.type === 'volumeEma');
+        const volumeIndicators = indicators.filter(item => item.paneGroup === 'volume' || item.type === 'volumeSma' || item.type === 'volumeEma' || item.type === 'tradeCount' || item.type === 'tradeCountSma' || item.type === 'tradeCountEma');
         const nonVolumeIndicators = indicators.filter(item => !volumeIndicators.includes(item));
         const addIndicator = (indicator, indicatorIndex) => {
           const group = indicator.paneGroup || indicatorKey(indicator, 'pane');

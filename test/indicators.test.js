@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd, calculateVolumeSma, calculateVolumeEma, calculateVwma, calculateBollingerBands } = require('../services/market-data/indicators');
+const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd, calculateVolumeSma, calculateVolumeEma, calculateTradeCount, calculateTradeCountSma, calculateTradeCountEma, calculateVwma, calculateBollingerBands } = require('../services/market-data/indicators');
 const { indicatorRegistry, parseIndicatorSpecifications, calculateIndicators } = require('../services/market-data/indicator-registry');
 
 function candles(closes) {
@@ -45,16 +45,25 @@ test('defines chart placement metadata for every registered indicator', () => {
   assert.deepEqual(Object.fromEntries(Object.entries(indicatorRegistry).map(([type, definition]) => [type, definition.placement])), {
     sma: 'overlay', ema: 'overlay', rsi: 'pane', atr: 'pane', vwap: 'overlay',
     stochastic: 'pane', adx: 'pane', macd: 'pane', bollinger: 'overlay',
-    volumeSma: 'pane', volumeEma: 'pane', vwma: 'overlay'
+    volumeSma: 'pane', volumeEma: 'pane', tradeCount: 'pane', tradeCountSma: 'pane', tradeCountEma: 'pane', vwma: 'overlay'
   });
   assert.equal(indicatorRegistry.macd.paneGroup, 'macd');
   assert.equal(indicatorRegistry.volumeSma.paneGroup, 'volume');
+  assert.equal(indicatorRegistry.tradeCount.paneGroup, 'volume');
 });
 
 test('rejects malformed indicator specifications', () => {
   assert.throws(() => parseIndicatorSpecifications('sma'), /type:period/);
   assert.throws(() => parseIndicatorSpecifications('macd:14'), /type:period/);
   assert.throws(() => parseIndicatorSpecifications('ema:0'), /positive integer/);
+});
+
+test('calculates raw trade count and moving averages', () => {
+  const input = [{ openTime: 0, trades: 10 }, { openTime: 60000, trades: 20 }, { openTime: 120000, trades: 30 }];
+  assert.deepEqual(calculateTradeCount(input).map(item => item.value), [10, 20, 30]);
+  assert.deepEqual(calculateTradeCountSma(input, 2).map(item => item.value), [null, 15, 25]);
+  assert.deepEqual(calculateTradeCountEma(input, 2).map(item => item.value), [null, 15, 25]);
+  assert.deepEqual(parseIndicatorSpecifications('tradeCount,tradeCountSma:2,tradeCountEma:2').map(item => item.type), ['tradeCount', 'tradeCountSma', 'tradeCountEma']);
 });
 
 test('calculates RSI with Wilder smoothing', () => {
