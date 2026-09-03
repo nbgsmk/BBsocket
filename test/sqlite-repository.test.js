@@ -34,3 +34,17 @@ test('ignores duplicate decision keys', () => {
   repository.close();
   fs.rmSync(directory, { recursive: true, force: true });
 });
+
+test('isolates positions and trades for strategies sharing an instrument', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'strategy-db-'));
+  const repository = new StrategyRepository(path.join(directory, 'strategy.sqlite'));
+  repository.savePosition({ instrument: 'btcusdt', exists: true }, 'trend:v1');
+  repository.savePosition({ instrument: 'btcusdt', exists: true }, 'rsi:v1');
+  assert.equal(repository.getPositions('trend:v1').length, 1);
+  assert.equal(repository.getPositions('rsi:v1').length, 1);
+  repository.deletePosition('btcusdt', 'trend:v1');
+  assert.equal(repository.getPositions('trend:v1').length, 0);
+  assert.equal(repository.getPositions('rsi:v1').length, 1);
+  repository.close();
+  fs.rmSync(directory, { recursive: true, force: true });
+});

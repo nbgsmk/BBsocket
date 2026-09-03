@@ -11,12 +11,13 @@ class StrategyEngine extends EventEmitter {
     super();
     if (!strategy || !service || typeof service.subscribeCandles !== 'function') throw new Error('Strategy engine requires a strategy and candle service');
     this.strategy = strategy;
+    this.strategyKey = strategy.name + ':v' + strategy.version;
     this.service = service;
     this.broker = broker;
     this.repository = repository;
     this.getPosition = getPosition || (broker ? ((instrument, price) => broker.getPosition(instrument, price)) : (() => ({ exists: false, side: null, size: 0 })));
     this.specifications = parseIndicatorSpecifications(strategy.indicators.join(','));
-    this.decisions = repository ? repository.getDecisions() : [];
+    this.decisions = repository ? repository.getDecisions(this.strategyKey) : [];
     this.lastProcessed = new Set(this.decisions.map(decision => decision.decisionKey).filter(Boolean));
     this.unsubscribe = null;
   }
@@ -87,7 +88,7 @@ class StrategyEngine extends EventEmitter {
     };
     decision.decisionKey = key;
     if (this.broker) decision.execution = this.broker.execute(decision, currentCandle);
-    if (this.repository) this.repository.saveDecision(decision);
+    if (this.repository) this.repository.saveDecision(decision, this.strategyKey);
     this.decisions.push(decision);
     if (this.decisions.length > 1000) this.decisions.shift();
     this.emit('decision', decision);

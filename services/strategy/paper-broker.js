@@ -1,8 +1,9 @@
 class PaperBroker {
-  constructor({ repository } = {}) {
+  constructor({ repository, strategyKey = 'default' } = {}) {
     this.repository = repository;
-    this.positions = new Map((repository ? repository.getPositions() : []).map(position => [position.instrument, position]));
-    this.trades = repository ? repository.getTrades() : [];
+    this.strategyKey = strategyKey;
+    this.positions = new Map((repository ? repository.getPositions(strategyKey) : []).map(position => [position.instrument, position]));
+    this.trades = repository ? repository.getTrades(strategyKey) : [];
     this.nextTradeId = this.trades.reduce((max, trade) => Math.max(max, Number(String(trade.tradeId).replace('paper-', '')) || 0), 0) + 1;
   }
 
@@ -32,7 +33,7 @@ class PaperBroker {
     if (decision.action === 'HOLD') {
       if (existing) {
         existing.unrealizedPnl = this.unrealizedPnl(existing, price);
-        if (this.repository) this.repository.savePosition(existing);
+        if (this.repository) this.repository.savePosition(existing, this.strategyKey);
       }
       return { status: 'held', position: this.getPosition(instrument, price) };
     }
@@ -43,7 +44,7 @@ class PaperBroker {
       if (!['long', 'short'].includes(side) || !Number.isFinite(size) || size <= 0) throw new Error('Paper trade requires a valid side and positive size');
       const position = { instrument, exists: true, side, size, entryPrice: price, entryTime: candle.openTime, unrealizedPnl: 0 };
       this.positions.set(instrument, position);
-      if (this.repository) this.repository.savePosition(position);
+      if (this.repository) this.repository.savePosition(position, this.strategyKey);
       return { status: 'opened', position: { ...position } };
     }
     if (decision.action === 'EXIT') {
@@ -53,8 +54,8 @@ class PaperBroker {
       this.trades.push(trade);
       this.positions.delete(instrument);
       if (this.repository) {
-        this.repository.saveTrade(trade);
-        this.repository.deletePosition(instrument);
+        this.repository.saveTrade(trade, this.strategyKey);
+        this.repository.deletePosition(instrument, this.strategyKey);
       }
       return { status: 'closed', trade: { ...trade }, position: this.getPosition(instrument, price) };
     }
