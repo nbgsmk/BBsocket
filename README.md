@@ -308,6 +308,8 @@ Set `includeIncomplete=true` to include the current in-progress aggregate in the
 
 The optional `indicators` parameter returns an enriched snapshot containing `instrument`, `aggregation`, `candles`, and an `indicators` array. Period-based indicators use the format `type:period`, separated by commas, for example `indicators=sma:20,ema:50`; parameterless indicators such as VWAP use only their type, for example `vwap`. Supported indicators are SMA, EMA, RSI, ATR, VWAP, VWMA, ADX, Stochastic, MACD, Bollinger Bands, volume SMA, and volume EMA. Stochastic uses `stochastic:kPeriod:dPeriod:slowing`, for example `stochastic:14:3:3`; MACD uses `macd:fastPeriod:slowPeriod:signalPeriod`, for example `macd:12:26:9`; Bollinger Bands use `bollinger:period:standardDeviations`, for example `bollinger:20:2`; volume indicators use `volumeSma:period` or `volumeEma:period`; VWMA uses `vwma:period`. Indicator values are aligned with candle timestamps through `openTime`. The indicator calculation is performed before `limit` is applied, preserving correct warm-up behavior.
 
+See [docs/indicators.md](docs/indicators.md) for concise explanations, output series, strategy references, and planned order-flow metrics.
+
 Example candle:
 
 ```json
