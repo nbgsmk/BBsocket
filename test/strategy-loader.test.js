@@ -18,7 +18,9 @@ version: 1
 enabled: true
 instruments: [BTCUSDT]
 aggregation: 15m
-indicators: [sma:20, volumeSma:20]
+indicators:
+  - { name: smaFast, indicator: "sma:20" }
+  - { name: volume, indicator: "volumeSma:20" }
 positionEntry:
   matchAll:
     - left: price.close
@@ -35,7 +37,7 @@ test('loads and normalizes a YAML strategy', () => {
   const strategy = loadStrategy(filePath);
   assert.equal(strategy.name, 'test-strategy');
   assert.deepEqual(strategy.instruments, ['btcusdt']);
-  assert.deepEqual(strategy.indicators, ['sma:20', 'volumeSma:20']);
+  assert.deepEqual(strategy.indicators, [{ name: 'smaFast', indicator: 'sma:20' }, { name: 'volume', indicator: 'volumesma:20' }]);
   fs.rmSync(directory, { recursive: true, force: true });
 });
 

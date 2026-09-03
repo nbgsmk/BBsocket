@@ -311,7 +311,7 @@
         message.textContent = ''; stopLiveUpdates();
         const selected = strategies.find(item => item.name === strategySelector.value);
         const query = new URLSearchParams({ instrument: instrument.value, aggregation: aggregation.value, limit: limit.value });
-        if (selected) query.set('indicators', (selected.indicators || []).join(','));
+        if (selected) query.set('indicators', (selected.indicators || []).map(item => typeof item === 'string' ? item : item.indicator).join(','));
         else if (indicator.value) query.set('indicators', indicator.value);
         const response = await fetch('/api/v1/binance/' + market.value + '/candles/snapshot?' + query);
         const body = await response.json(); if (!response.ok) throw new Error(body.error || 'Chart request failed');

@@ -42,8 +42,17 @@ function validateStrategy(strategy) {
   if (!Array.isArray(strategy.instruments) || strategy.instruments.length === 0 || strategy.instruments.some(item => typeof item !== 'string' || !item.trim())) fail('instruments must be a non-empty string array');
   if (typeof strategy.aggregation !== 'string' || !AGGREGATIONS.has(strategy.aggregation)) fail('aggregation is unsupported');
   if (!Array.isArray(strategy.indicators)) fail('indicators must be an array');
-  try { strategy.indicators.forEach(item => parseIndicatorSpecifications(item)); }
-  catch (error) { fail(error.message); }
+  const aliases = new Set();
+  try {
+    strategy.indicators.forEach((item, index) => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) fail('indicators[' + index + '] must define name and indicator');
+      if (typeof item.name !== 'string' || !/^[A-Za-z][A-Za-z0-9_]*$/.test(item.name)) fail('indicators[' + index + '].name is invalid');
+      if (aliases.has(item.name)) fail('indicator alias must be unique: ' + item.name);
+      aliases.add(item.name);
+      if (typeof item.indicator !== 'string' || !item.indicator.trim()) fail('indicators[' + index + '].indicator must be a specification');
+      parseIndicatorSpecifications(item.indicator);
+    });
+  } catch (error) { fail(error.message.replace(/^Invalid strategy: /, '')); }
   validateCondition(strategy.positionEntry, 'positionEntry');
   validateCondition(strategy.positionExit, 'positionExit');
   if (strategy.trade !== undefined && (typeof strategy.trade !== 'object' || typeof strategy.trade.side !== 'string' || typeof strategy.trade.size !== 'number' || strategy.trade.size <= 0)) fail('trade must define a positive numeric size and side');
@@ -51,7 +60,7 @@ function validateStrategy(strategy) {
     ...strategy,
     name: strategy.name.trim(),
     instruments: strategy.instruments.map(instrument => instrument.trim().toLowerCase()),
-    indicators: strategy.indicators.map(item => item.trim())
+    indicators: strategy.indicators.map(item => ({ name: item.name.trim(), indicator: item.indicator.trim().toLowerCase() }))
   };
 }
 

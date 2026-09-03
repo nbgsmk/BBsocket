@@ -16,7 +16,7 @@ class StrategyEngine extends EventEmitter {
     this.broker = broker;
     this.repository = repository;
     this.getPosition = getPosition || (broker ? ((instrument, price) => broker.getPosition(instrument, price)) : (() => ({ exists: false, side: null, size: 0 })));
-    this.specifications = parseIndicatorSpecifications(strategy.indicators.join(','));
+    this.specifications = parseIndicatorSpecifications(strategy.indicators.map(item => item.indicator).join(','));
     this.decisions = repository ? repository.getDecisions(this.strategyKey) : [];
     this.lastProcessed = new Set(this.decisions.map(decision => decision.decisionKey).filter(Boolean));
     this.unsubscribe = null;
@@ -55,11 +55,13 @@ class StrategyEngine extends EventEmitter {
     const indicator = {};
     const previousIndicator = {};
     indicatorResults.forEach((result, resultIndex) => {
-      const specification = this.strategy.indicators[resultIndex];
+      const configured = this.strategy.indicators[resultIndex];
+      const specification = configured.indicator;
+      const alias = configured.name;
       const multiple = result.series.length > 1;
       result.series.forEach(series => {
-        indicator[indicatorKey(specification, series.name, multiple)] = series.values[currentIndex] && series.values[currentIndex].value;
-        previousIndicator[indicatorKey(specification, series.name, multiple)] = previousIndex >= 0 && series.values[previousIndex] && series.values[previousIndex].value;
+        indicator[alias + (multiple ? '.' + series.name : '')] = series.values[currentIndex] && series.values[currentIndex].value;
+        previousIndicator[alias + (multiple ? '.' + series.name : '')] = previousIndex >= 0 && series.values[previousIndex] && series.values[previousIndex].value;
       });
     });
     const context = {
@@ -108,11 +110,12 @@ class StrategyEngine extends EventEmitter {
       const indicator = {};
       const previousIndicator = {};
       results.forEach((result, resultIndex) => {
-        const specification = this.strategy.indicators[resultIndex];
+        const configured = this.strategy.indicators[resultIndex];
+        const alias = configured.name;
         const multiple = result.series.length > 1;
         result.series.forEach(series => {
-          indicator[indicatorKey(specification, series.name, multiple)] = result.series && series.values[index] && series.values[index].value;
-          previousIndicator[indicatorKey(specification, series.name, multiple)] = series.values[index - 1] && series.values[index - 1].value;
+          indicator[alias + (multiple ? '.' + series.name : '')] = result.series && series.values[index] && series.values[index].value;
+          previousIndicator[alias + (multiple ? '.' + series.name : '')] = series.values[index - 1] && series.values[index - 1].value;
         });
       });
       const candle = candles[index];

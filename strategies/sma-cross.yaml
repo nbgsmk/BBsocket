@@ -5,19 +5,19 @@ instruments:
   - btcusdt
 aggregation: 5m
 indicators:
-  - sma:2
-  - sma:10
-  - rsi:14
+  - { name: smaFast, indicator: "sma:2" }
+  - { name: smaSlow, indicator: "sma:10" }
+  - { name: rsi, indicator: "rsi:14" }
 positionEntry:
   matchAny:
-    - left: indicator.sma:2
+    - left: indicator.smaFast
       operator: crossesAbove
-      right: indicator.sma:10
-    - { l: indicator.rsi:14, op: ">", r: 70 }
+      right: indicator.smaSlow
+    - { l: indicator.rsi, op: ">", r: 70 }
 
 positionExit:
   matchAny:
-    - { l: indicator.rsi:14, op: "<", r: 60 }
+    - { l: indicator.rsi, op: "<", r: 60 }
 
 trade:
   side: long
