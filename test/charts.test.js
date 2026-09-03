@@ -21,4 +21,18 @@ test('chart page contains data controls and live chart integration', () => {
   assert.match(template, /indicator\.placement/);
   assert.match(template, /seriesByKey/);
   assert.match(template, /addSeries\(LightweightCharts\.LineSeries/);
+  assert.match(template, /separatorColor/);
+  assert.match(template, /chart-pane-label/);
+  assert.match(template, /indicatorLabel/);
+  assert.match(template, /clearPaneLabels/);
+  assert.match(template, /id="pane-labels"/);
+  assert.match(template, /getBoundingClientRect/);
+  assert.match(template, /positionPaneLabels/);
+  assert.match(template, /schedulePaneLabelPosition/);
+  assert.match(template, /requestAnimationFrame/);
+  assert.match(template, /cancelAnimationFrame/);
+  assert.match(template, /paneLabelCreationFrame/);
+  assert.match(template, /schedulePaneLabelCreation/);
+  assert.match(template, /paneResizeObservers/);
+  assert.doesNotMatch(template, /borderTop = '16px solid #ffffff'/);
 });

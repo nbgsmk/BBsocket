@@ -10,7 +10,9 @@
       h1 { margin-top: 0; }
       button { cursor: pointer; margin: 0 .35rem .35rem 0; padding: .35rem .65rem; }
       label { margin-right: .5rem; }
-      #chart { border: 1px solid #bbb; height: 720px; width: 100%; }
+      #chart { position: relative; border: 1px solid #bbb; height: 720px; width: 100%; }
+      #pane-labels { position: absolute; inset: 0; z-index: 20; pointer-events: none; overflow: hidden; }
+      .chart-pane-label { position: absolute; z-index: 10; top: 6px; left: 8px; padding: 2px 6px; border-radius: 3px; background: rgba(255, 255, 255, .88); color: #4b5563; font: 11px -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif; pointer-events: none; white-space: nowrap; }
       #message { color: #a00; min-height: 1.5rem; }
       #summary { font-family: monospace; white-space: pre-wrap; }
     </style>
@@ -28,7 +30,7 @@
       <button type="button" id="load">Load chart</button>
       <button type="button" id="live">Enable live updates</button>
       <p id="message" role="alert"></p>
-      <div id="chart"></div>
+      <div id="chart"><div id="pane-labels"></div></div>
       <p id="summary">Load a chart to begin.</p>
     </main>
     <script src="/vendor/lightweight-charts.standalone.production.js"></script>
@@ -43,13 +45,18 @@
       const message = document.getElementById('message');
       const summary = document.getElementById('summary');
       const liveButton = document.getElementById('live');
+      const paneLabelsElement = document.getElementById('pane-labels');
       let candles = [], source = null, activeIndicators = [], strategyDecisions = [], strategies = [];
       const seriesByKey = new Map();
-      const chart = LightweightCharts.createChart(chartElement, { height: 720, layout: { background: { color: '#ffffff' }, textColor: '#333333' }, grid: { vertLines: { color: '#eeeeee' }, horzLines: { color: '#eeeeee' } } });
+      const chart = LightweightCharts.createChart(chartElement, { height: 720, layout: { background: { color: '#ffffff' }, textColor: '#333333' }, grid: { vertLines: { color: '#eeeeee' }, horzLines: { color: '#eeeeee' } }, panes: { enableResize: true, separatorColor: '#ffffff', separatorHoverColor: '#cbd5e1' } });
       const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, { upColor: '#16803c', downColor: '#b42318', borderVisible: false, wickUpColor: '#16803c', wickDownColor: '#b42318' });
       const markers = LightweightCharts.createSeriesMarkers(candleSeries);
       let indicatorSeries = [];
-      new ResizeObserver(() => chart.resize(chartElement.clientWidth, 720)).observe(chartElement);
+      const paneLabels = new Map();
+      const paneResizeObservers = new Map();
+      let paneLabelCreationFrame = null;
+      let paneLabelPositionFrame = null;
+      new ResizeObserver(() => { chart.resize(chartElement.clientWidth, 720); schedulePaneLabelPosition(); }).observe(chartElement);
 
       function stopLiveUpdates() {
         if (source) source.close();
@@ -84,15 +91,81 @@
         return indicator.type + (parameters.length ? ':' + parameters.join(':') : '') + '.' + seriesName;
       }
 
+      function indicatorLabel(indicator) {
+        const names = { sma: 'SMA', ema: 'EMA', rsi: 'RSI', atr: 'ATR', vwap: 'VWAP', vwma: 'VWMA', adx: 'ADX', stochastic: 'Stochastic', macd: 'MACD', bollinger: 'Bollinger Bands', volumeSma: 'Volume SMA', volumeEma: 'Volume EMA' };
+        const argumentsList = Object.keys(indicator.parameters || {}).sort().map(name => indicator.parameters[name]);
+        return (names[indicator.type] || indicator.type.toUpperCase()) + (argumentsList.length ? ' (' + argumentsList.join(', ') + ')' : '');
+      }
+
+      function clearPaneLabels() {
+        if (paneLabelCreationFrame !== null) {
+          cancelAnimationFrame(paneLabelCreationFrame);
+          paneLabelCreationFrame = null;
+        }
+        if (paneLabelPositionFrame !== null) {
+          cancelAnimationFrame(paneLabelPositionFrame);
+          paneLabelPositionFrame = null;
+        }
+        paneResizeObservers.forEach(observer => observer.disconnect());
+        paneResizeObservers.clear();
+        paneLabels.forEach(({ label }) => label.remove());
+        paneLabels.clear();
+      }
+
+      function schedulePaneLabelPosition() {
+        if (paneLabelPositionFrame !== null) cancelAnimationFrame(paneLabelPositionFrame);
+        paneLabelPositionFrame = requestAnimationFrame(() => {
+          paneLabelPositionFrame = null;
+          positionPaneLabels();
+        });
+      }
+
+      function schedulePaneLabelCreation(paneIndicators) {
+        if (paneLabelCreationFrame !== null) cancelAnimationFrame(paneLabelCreationFrame);
+        paneLabelCreationFrame = requestAnimationFrame(() => {
+          paneLabelCreationFrame = null;
+          paneIndicators.forEach((paneItems, paneIndex) => addPaneLabel(paneIndex, paneItems));
+          schedulePaneLabelPosition();
+        });
+      }
+
+      function positionPaneLabels() {
+        const chartRect = chartElement.getBoundingClientRect();
+        const chartLeft = chartRect.left + chartElement.clientLeft;
+        const chartTop = chartRect.top + chartElement.clientTop;
+        paneLabels.forEach(({ label, element }) => {
+          const paneRect = element.getBoundingClientRect();
+          label.style.left = Math.max(0, paneRect.left - chartLeft + 8) + 'px';
+          label.style.top = Math.max(0, paneRect.top - chartTop + 6) + 'px';
+        });
+      }
+
+      function addPaneLabel(paneIndex, indicators) {
+        const pane = chart.panes()[paneIndex];
+        const element = pane && pane.getHTMLElement();
+        if (!element) return;
+        const label = document.createElement('div');
+        label.className = 'chart-pane-label';
+        label.textContent = indicators.map(indicatorLabel).join('  ·  ');
+        paneLabelsElement.appendChild(label);
+        paneLabels.set(paneIndex, { label, element });
+        const observer = new ResizeObserver(schedulePaneLabelPosition);
+        observer.observe(element);
+        paneResizeObservers.set(paneIndex, observer);
+      }
+
       function draw(data, indicators = [], decisions = []) {
         candles = data; activeIndicators = indicators; strategyDecisions = decisions; candleSeries.setData(data.filter(item => Number.isFinite(Number(item.openTime))).map(item => ({ time: Math.floor(item.openTime / 1000), open: Number(item.open), high: Number(item.high), low: Number(item.low), close: Number(item.close) })));
         markers.setMarkers(decisions.filter(decision => decision.action === 'ENTER' || decision.action === 'EXIT').map(decision => ({ time: Math.floor(decision.openTime / 1000), position: decision.action === 'ENTER' ? 'belowBar' : 'aboveBar', color: decision.action === 'ENTER' ? '#16803c' : '#b42318', shape: decision.action === 'ENTER' ? 'arrowUp' : 'arrowDown', text: decision.action + ' ' + decision.strategy })));
-        indicatorSeries.forEach(series => chart.removeSeries(series)); indicatorSeries = []; seriesByKey.clear();
+        indicatorSeries.forEach(series => chart.removeSeries(series)); indicatorSeries = []; seriesByKey.clear(); clearPaneLabels();
         const paneIndexes = new Map();
+        const paneIndicators = new Map();
         let nextPaneIndex = 1;
         indicators.forEach((indicator, indicatorIndex) => {
           const group = indicator.paneGroup || indicatorKey(indicator, 'pane');
           const paneIndex = indicator.placement === 'overlay' ? 0 : (paneIndexes.has(group) ? paneIndexes.get(group) : (paneIndexes.set(group, nextPaneIndex), nextPaneIndex++));
+          if (!paneIndicators.has(paneIndex)) paneIndicators.set(paneIndex, []);
+          paneIndicators.get(paneIndex).push(indicator);
           indicator.series.forEach((series, seriesIndex) => {
             const line = chart.addSeries(LightweightCharts.LineSeries, { color: ['#2563eb', '#9333ea', '#ea580c', '#16a34a'][(indicatorIndex + seriesIndex) % 4], lineWidth: 2 }, paneIndex);
             line.setData(series.values.filter(point => point.value !== null && point.value !== undefined).map(point => ({ time: Math.floor(point.openTime / 1000), value: Number(point.value) })));
@@ -101,6 +174,7 @@
           });
         });
         chart.timeScale().fitContent();
+        schedulePaneLabelCreation(paneIndicators);
         const selected = strategies.find(item => item.name === strategySelector.value);
         summary.textContent = data.length + ' candles | latest close: ' + data[data.length - 1].close + ' | ' + new Date(data[data.length - 1].closeTime).toISOString() + (selected ? ' | ' + selected.name + ' v' + selected.version + ' | decisions: ' + decisions.length : '');
       }
