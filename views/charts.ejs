@@ -239,9 +239,25 @@
         paneResizeObservers.set(paneIndex, observer);
       }
 
+      function strategyMarkers(decisions, data) {
+        const candleTimes = new Set(data
+          .filter(item => Number.isFinite(Number(item.openTime)))
+          .map(item => Math.floor(Number(item.openTime) / 1000)));
+        return decisions
+          .map(decision => ({ decision, action: String(decision && decision.action || '').toUpperCase(), time: Number(decision && decision.openTime) }))
+          .filter(item => (item.action === 'ENTER' || item.action === 'EXIT') && Number.isFinite(item.time) && candleTimes.has(Math.floor(item.time / 1000)))
+          .map(item => ({
+            time: Math.floor(item.time / 1000),
+            position: item.action === 'ENTER' ? 'belowBar' : 'aboveBar',
+            color: item.action === 'ENTER' ? '#16803c' : '#b42318',
+            shape: item.action === 'ENTER' ? 'arrowUp' : 'arrowDown',
+            text: item.action + (item.decision.strategy ? ' ' + item.decision.strategy : '')
+          }));
+      }
+
       function draw(data, indicators = [], decisions = []) {
         candles = data; activeIndicators = indicators; strategyDecisions = decisions; candleSeries.setData(data.filter(item => Number.isFinite(Number(item.openTime))).map(item => ({ time: Math.floor(item.openTime / 1000), open: Number(item.open), high: Number(item.high), low: Number(item.low), close: Number(item.close) })));
-        markers.setMarkers(decisions.filter(decision => decision.action === 'ENTER' || decision.action === 'EXIT').map(decision => ({ time: Math.floor(decision.openTime / 1000), position: decision.action === 'ENTER' ? 'belowBar' : 'aboveBar', color: decision.action === 'ENTER' ? '#16803c' : '#b42318', shape: decision.action === 'ENTER' ? 'arrowUp' : 'arrowDown', text: decision.action + ' ' + decision.strategy })));
+        markers.setMarkers(strategyMarkers(decisions, data));
         indicatorSeries.forEach(series => chart.removeSeries(series)); indicatorSeries = [];
         if (volumeSeries) chart.removeSeries(volumeSeries);
         volumeSeries = null; volumePaneIndex = null; seriesByKey.clear(); clearPaneLabels();
@@ -301,7 +317,7 @@
         const body = await response.json(); if (!response.ok) throw new Error(body.error || 'Chart request failed');
         let decisions = [];
         if (strategySelector.value) {
-          const decisionResponse = await fetch('/api/v1/strategy/decisions?strategy=' + encodeURIComponent(strategySelector.value) + '&instrument=' + encodeURIComponent(instrument.value) + '&limit=' + encodeURIComponent(limit.value));
+          const decisionResponse = await fetch('/api/v1/strategy/decisions?history=true&strategy=' + encodeURIComponent(strategySelector.value) + '&instrument=' + encodeURIComponent(instrument.value) + '&limit=' + encodeURIComponent(limit.value));
           const decisionBody = await decisionResponse.json(); if (!decisionResponse.ok) throw new Error(decisionBody.error || 'Decision request failed');
           decisions = decisionBody;
         }

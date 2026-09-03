@@ -9,14 +9,15 @@ indicators:
   - sma:10
   - rsi:14
 positionEntry:
-  matchAll:
-    - left: indicator.sma:5
+  matchAny:
+    - left: indicator.sma:2
       operator: crossesAbove
       right: indicator.sma:10
+    - { l: indicator.rsi:14, op: ">", r: 70 }
 
 positionExit:
   matchAny:
-    - { l: indicator.sma:5, op: crossesBelow, r: indicator.sma:10 }
+    - { l: indicator.rsi:14, op: "<", r: 60 }
 
 trade:
   side: long

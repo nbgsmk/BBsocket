@@ -96,6 +96,43 @@ class StrategyEngine extends EventEmitter {
   }
 
   getDecisions() { return this.decisions.map(decision => ({ ...decision })); }
+
+  getHistoricalDecisions(limit = 1000) {
+    const instrument = this.strategy.instruments[0];
+    const candles = this.service.aggregateCandles(instrument, this.strategy.aggregation, false)
+      .filter(candle => candle && candle.candlestickIsClosed);
+    const results = calculateIndicators(candles, this.specifications);
+    const historical = [];
+    let inPosition = false;
+    for (let index = 1; index < candles.length; index += 1) {
+      const indicator = {};
+      const previousIndicator = {};
+      results.forEach((result, resultIndex) => {
+        const specification = this.strategy.indicators[resultIndex];
+        const multiple = result.series.length > 1;
+        result.series.forEach(series => {
+          indicator[indicatorKey(specification, series.name, multiple)] = result.series && series.values[index] && series.values[index].value;
+          previousIndicator[indicatorKey(specification, series.name, multiple)] = series.values[index - 1] && series.values[index - 1].value;
+        });
+      });
+      const candle = candles[index];
+      const context = {
+        price: candle,
+        volume: candle,
+        indicator,
+        previous: { price: candles[index - 1], indicator: previousIndicator },
+        position: { exists: inPosition, side: null, size: 0 }
+      };
+      const entry = evaluateCondition(this.strategy.positionEntry, context);
+      const exit = evaluateCondition(this.strategy.positionExit, context);
+      const action = inPosition ? (exit.result ? 'EXIT' : 'HOLD') : (entry.result ? 'ENTER' : 'HOLD');
+      if (action === 'ENTER' || action === 'EXIT') {
+        historical.push({ strategy: this.strategy.name, version: this.strategy.version, instrument, aggregation: this.strategy.aggregation, openTime: candle.openTime, action, candle, position: context.position, trade: this.strategy.trade, positionEntry: entry, positionExit: exit });
+        inPosition = action === 'ENTER';
+      }
+    }
+    return historical.slice(-limit);
+  }
 }
 
 module.exports = StrategyEngine;

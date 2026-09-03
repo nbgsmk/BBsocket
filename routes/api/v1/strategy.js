@@ -15,11 +15,19 @@ module.exports = function createStrategyRoutes(runtime) {
   router.get('/decisions', (req, res) => {
     const limit = limitValue(req.query.limit);
     if (limit === null) return res.status(400).json({ error: 'limit must be a positive integer' });
-    let decisions = runtime.runtimes.flatMap(item => item.engine ? item.engine.getDecisions() : []);
+    let decisions = runtime.runtimes.flatMap(item => {
+      if (!item.engine) return [];
+      const live = item.engine.getDecisions();
+      return req.query.history === 'true' && typeof item.engine.getHistoricalDecisions === 'function'
+        ? live.concat(item.engine.getHistoricalDecisions(1000))
+        : live;
+    });
     if (req.query.strategy) decisions = decisions.filter(decision => decision.strategy === String(req.query.strategy));
     if (req.query.instrument) decisions = decisions.filter(decision => decision.instrument === String(req.query.instrument).toLowerCase());
     decisions.sort((left, right) => left.openTime - right.openTime || String(left.strategy).localeCompare(String(right.strategy)));
-    res.json(decisions.slice(-limit));
+    const unique = new Map();
+    decisions.forEach(decision => unique.set(String(decision.strategy) + ':' + decision.openTime + ':' + decision.action, decision));
+    res.json(Array.from(unique.values()).slice(-limit));
   });
   return router;
 };
