@@ -1,4 +1,5 @@
 const fs = require('node:fs');
+const path = require('node:path');
 const YAML = require('yaml');
 const { parseIndicatorSpecifications } = require('../market-data/indicator-registry');
 const { normalizeCondition } = require('./condition-normalizer');
@@ -90,6 +91,10 @@ function loadStrategy(filePath) {
   let strategy;
   try { strategy = YAML.parse(source); }
   catch (error) { throw new Error('Unable to parse strategy YAML: ' + error.message); }
+  if (strategy && typeof strategy === 'object' && !Array.isArray(strategy)
+    && (strategy.name === undefined || strategy.name === null || (typeof strategy.name === 'string' && !strategy.name.trim()))) {
+    strategy.name = path.basename(filePath).replace(/\.ya?ml$/i, '');
+  }
   return validateStrategy(strategy, source);
 }
 

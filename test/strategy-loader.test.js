@@ -5,9 +5,9 @@ const path = require('node:path');
 const test = require('node:test');
 const { loadStrategy } = require('../services/strategy/strategy-loader');
 
-function temporaryStrategy(source) {
+function temporaryStrategy(source, filename = 'strategy.yaml') {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'strategy-'));
-  const filePath = path.join(directory, 'strategy.yaml');
+  const filePath = path.join(directory, filename);
   fs.writeFileSync(filePath, source);
   return { directory, filePath };
 }
@@ -41,6 +41,26 @@ test('loads and normalizes a YAML strategy', () => {
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
+test('uses the YAML filename when the strategy name is empty', () => {
+  for (const [nameField, filename, expectedName] of [['name:', 'sma-cross.yaml', 'sma-cross'], ['name: ""', 'empty-name.yaml', 'empty-name'], ['name: "   "', 'whitespace-name.yaml', 'whitespace-name']]) {
+    const { directory, filePath } = temporaryStrategy(valid.replace('name: test-strategy', nameField), filename);
+    const strategy = loadStrategy(filePath);
+    assert.equal(strategy.name, expectedName);
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+
+  const { directory, filePath } = temporaryStrategy(valid.replace('name: test-strategy\n', ''), 'missing-name.yml');
+  const strategy = loadStrategy(filePath);
+  assert.equal(strategy.name, 'missing-name');
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
+test('preserves an explicit strategy name', () => {
+  const { directory, filePath } = temporaryStrategy(valid);
+  assert.equal(loadStrategy(filePath).name, 'test-strategy');
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
 test('rejects malformed strategies', () => {
   const { directory, filePath } = temporaryStrategy('name: missing-fields\n');
   assert.throws(() => loadStrategy(filePath), /version must be a positive integer/);
@@ -48,7 +68,7 @@ test('rejects malformed strategies', () => {
 });
 
 test('rejects invalid indicators and operators', () => {
-  const invalidIndicator = valid.replace('sma:20, volumeSma:20', 'unknown:20');
+  const invalidIndicator = valid.replace('indicator: "sma:20"', 'indicator: "unknown:20"');
   const invalidOperator = valid.replace('operator: ">"', 'operator: "??"');
   for (const source of [invalidIndicator, invalidOperator]) {
     const { directory, filePath } = temporaryStrategy(source);
