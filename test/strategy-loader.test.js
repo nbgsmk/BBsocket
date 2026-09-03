@@ -19,12 +19,12 @@ enabled: true
 instruments: [BTCUSDT]
 aggregation: 15m
 indicators: [sma:20, volumeSma:20]
-entry:
-  all:
+positionEntry:
+  matchAll:
     - left: price.close
       operator: ">"
       right: indicator.sma:20
-exit:
+positionExit:
   left: price.close
   operator: "<"
   right: indicator.sma:20
@@ -53,4 +53,32 @@ test('rejects invalid indicators and operators', () => {
     assert.throws(() => loadStrategy(filePath), /Invalid strategy/);
     fs.rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('rejects legacy position condition keys', () => {
+  const legacy = valid.replace('positionEntry:', 'open:').replace('positionExit:', 'close:');
+  const { directory, filePath } = temporaryStrategy(legacy);
+  assert.throws(() => loadStrategy(filePath), /Invalid strategy: positionEntry must be an object/);
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
+test('rejects legacy all and any logical keys', () => {
+  const legacy = valid.replace('matchAll:', 'all:').replace('matchAny:', 'any:');
+  const { directory, filePath } = temporaryStrategy(legacy);
+  assert.throws(() => loadStrategy(filePath), /Invalid strategy: positionEntry\.left must be a non-empty reference/);
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
+test('accepts compact condition-key aliases', () => {
+  const compact = valid.replace('left:', 'l:').replace('operator:', 'op:').replace('right:', 'r:');
+  const { directory, filePath } = temporaryStrategy(compact);
+  assert.doesNotThrow(() => loadStrategy(filePath));
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
+test('rejects duplicate condition-key aliases', () => {
+  const duplicate = valid.replace('positionExit:\n  left: price.close', 'positionExit:\n  left: price.close\n  l: price.high');
+  const { directory, filePath } = temporaryStrategy(duplicate);
+  assert.throws(() => loadStrategy(filePath), /cannot define both left and l/);
+  fs.rmSync(directory, { recursive: true, force: true });
 });

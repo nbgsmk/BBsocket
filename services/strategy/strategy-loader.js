@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const YAML = require('yaml');
 const { parseIndicatorSpecifications } = require('../market-data/indicator-registry');
+const { normalizeCondition } = require('./condition-normalizer');
 
 const AGGREGATIONS = new Set(['1s', '1m', '2m', '3m', '5m', '10m', '15m', '20m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '2d', '3d', '4d', '5d', '1w']);
 const OPERATORS = new Set(['=', '!=', '>', '>=', '<', '<=', 'between', 'crossesAbove', 'crossesBelow']);
@@ -10,8 +11,10 @@ function fail(message) {
 }
 
 function validateCondition(condition, path) {
+  try { condition = normalizeCondition(condition); }
+  catch (error) { fail(path + ' ' + error.message.toLowerCase()); }
   if (!condition || typeof condition !== 'object' || Array.isArray(condition)) fail(path + ' must be an object');
-  const logicalKeys = ['all', 'any'];
+  const logicalKeys = ['matchAll', 'matchAny'];
   for (const key of logicalKeys) {
     if (condition[key] !== undefined) {
       if (!Array.isArray(condition[key]) || condition[key].length === 0) fail(path + '.' + key + ' must be a non-empty array');
@@ -41,8 +44,8 @@ function validateStrategy(strategy) {
   if (!Array.isArray(strategy.indicators)) fail('indicators must be an array');
   try { strategy.indicators.forEach(item => parseIndicatorSpecifications(item)); }
   catch (error) { fail(error.message); }
-  validateCondition(strategy.entry, 'entry');
-  validateCondition(strategy.exit, 'exit');
+  validateCondition(strategy.positionEntry, 'positionEntry');
+  validateCondition(strategy.positionExit, 'positionExit');
   if (strategy.trade !== undefined && (typeof strategy.trade !== 'object' || typeof strategy.trade.side !== 'string' || typeof strategy.trade.size !== 'number' || strategy.trade.size <= 0)) fail('trade must define a positive numeric size and side');
   return {
     ...strategy,

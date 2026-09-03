@@ -24,6 +24,18 @@ test('evaluates comparisons and between inclusively', () => {
   assert.equal(evaluateCondition({ left: 'position.exists', operator: '=', right: false }, context).result, true);
 });
 
+test('evaluates compact condition-key aliases', () => {
+  const evaluation = evaluateCondition({ l: 'price.close', op: '>', r: 100 }, context);
+  assert.equal(evaluation.result, true);
+  assert.equal(evaluation.left, 105);
+  assert.equal(evaluation.right, 100);
+  assert.equal(evaluation.operator, '>');
+});
+
+test('rejects duplicate canonical keys and aliases', () => {
+  assert.throws(() => evaluateCondition({ left: 'price.close', l: 'price.high', operator: '>', right: 100 }), /both left and l/);
+});
+
 test('evaluates crossovers using previous values', () => {
   const condition = { left: 'indicator.sma:20', operator: 'crossesAbove', right: 'indicator.sma:50' };
   const evaluation = evaluateCondition(condition, context);
@@ -32,12 +44,12 @@ test('evaluates crossovers using previous values', () => {
 });
 
 test('evaluates nested logical groups and explains results', () => {
-  const evaluation = evaluateCondition({ any: [
+  const evaluation = evaluateCondition({ matchAny: [
     { left: 'price.close', operator: '<', right: 10 },
     { not: { left: 'position.exists', operator: '=', right: true } }
   ] }, context);
   assert.equal(evaluation.result, true);
-  assert.equal(evaluation.type, 'any');
+  assert.equal(evaluation.type, 'matchAny');
   assert.equal(evaluation.evaluations.length, 2);
 });
 

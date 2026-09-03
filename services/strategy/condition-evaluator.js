@@ -1,4 +1,5 @@
 const OPERATORS = new Set(['=', '!=', '>', '>=', '<', '<=', 'between', 'crossesAbove', 'crossesBelow']);
+const { normalizeCondition } = require('./condition-normalizer');
 
 function readPath(object, path) {
   return path.split('.').reduce((value, key) => value === undefined || value === null ? undefined : value[key], object);
@@ -45,13 +46,14 @@ function compare(left, operator, right) {
 }
 
 function evaluateCondition(condition, context = {}) {
-  if (condition.all) {
-    const evaluations = condition.all.map(child => evaluateCondition(child, context));
-    return { result: evaluations.every(item => item.result), type: 'all', evaluations };
+  condition = normalizeCondition(condition);
+  if (condition.matchAll) {
+    const evaluations = condition.matchAll.map(child => evaluateCondition(child, context));
+    return { result: evaluations.every(item => item.result), type: 'matchAll', evaluations };
   }
-  if (condition.any) {
-    const evaluations = condition.any.map(child => evaluateCondition(child, context));
-    return { result: evaluations.some(item => item.result), type: 'any', evaluations };
+  if (condition.matchAny) {
+    const evaluations = condition.matchAny.map(child => evaluateCondition(child, context));
+    return { result: evaluations.some(item => item.result), type: 'matchAny', evaluations };
   }
   if (condition.not) {
     const evaluation = evaluateCondition(condition.not, context);

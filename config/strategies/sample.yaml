@@ -3,31 +3,30 @@ version: 1
 enabled: false
 instruments:
   - btcusdt
-aggregation: 15m
+aggregation: 5m
 indicators:
   - sma:20
   - sma:50
   - rsi:14
   - volumeSma:20
-entry:
-  all:
+positionEntry:
+  matchAll:
     - left: indicator.sma:20
       operator: crossesAbove
       right: indicator.sma:50
+
     - left: price.close
       operator: ">"
       right: indicator.sma:20
+
     - left: volume.volume
       operator: ">"
       right: indicator.volumeSma:20
-exit:
-  any:
-    - left: indicator.sma:20
-      operator: crossesBelow
-      right: indicator.sma:50
-    - left: indicator.rsi:14
-      operator: ">"
-      right: 75
+
+positionExit:
+  matchAny:
+    - { l: indicator.sma:20, op: crossesBelow, r: indicator.sma:50 }
+    - { l: indicator.rsi:14, op: ">", r: 75 }
 trade:
   side: long
   size: 0.01

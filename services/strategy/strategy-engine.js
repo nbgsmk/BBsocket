@@ -69,9 +69,9 @@ class StrategyEngine extends EventEmitter {
       position: this.getPosition(instrument, currentCandle.close) || { exists: false, side: null, size: 0 }
     };
     const position = context.position;
-    const entryEvaluation = evaluateCondition(this.strategy.entry, context);
-    const exitEvaluation = evaluateCondition(this.strategy.exit, context);
-    const action = position.exists ? (exitEvaluation.result ? 'EXIT' : 'HOLD') : (entryEvaluation.result ? 'ENTER' : 'HOLD');
+    const positionEntryEvaluation = evaluateCondition(this.strategy.positionEntry, context);
+    const positionExitEvaluation = evaluateCondition(this.strategy.positionExit, context);
+    const action = position.exists ? (positionExitEvaluation.result ? 'EXIT' : 'HOLD') : (positionEntryEvaluation.result ? 'ENTER' : 'HOLD');
     const decision = {
       strategy: this.strategy.name,
       version: this.strategy.version,
@@ -82,8 +82,8 @@ class StrategyEngine extends EventEmitter {
       candle: currentCandle,
       position,
       trade: this.strategy.trade,
-      entry: entryEvaluation,
-      exit: exitEvaluation
+      positionEntry: positionEntryEvaluation,
+      positionExit: positionExitEvaluation
     };
     decision.decisionKey = key;
     if (this.broker) decision.execution = this.broker.execute(decision, currentCandle);

@@ -15,8 +15,8 @@ function serviceStub() {
 function strategy(overrides = {}) {
   return {
     name: 'test', version: 1, enabled: true, instruments: ['btcusdt'], aggregation: '1m', indicators: [],
-    entry: { left: 'price.close', operator: '>', right: 100 },
-    exit: { left: 'price.close', operator: '<', right: 90 },
+    positionEntry: { left: 'price.close', operator: '>', right: 100 },
+    positionExit: { left: 'price.close', operator: '<', right: 90 },
     ...overrides
   };
 }
@@ -34,7 +34,7 @@ test('evaluates completed aggregates and emits explainable decisions', () => {
   service.push(candle(1, 110));
   assert.equal(decisions.length, 1);
   assert.equal(decisions[0].action, 'ENTER');
-  assert.equal(decisions[0].entry.result, true);
+  assert.equal(decisions[0].positionEntry.result, true);
   engine.stop();
 });
 
