@@ -21,6 +21,12 @@ test('chart page contains data controls and live chart integration', () => {
   assert.match(template, /indicator\.placement/);
   assert.match(template, /seriesByKey/);
   assert.match(template, /addSeries\(LightweightCharts\.LineSeries/);
+  assert.match(template, /addSeries\(LightweightCharts\.HistogramSeries/);
+  assert.match(template, /priceFormat: \{ type: 'volume' \}/);
+  assert.match(template, /volumePaneIndex/);
+  assert.match(template, /setHeight\(140\)/);
+  assert.match(template, /volumeSeries\.update/);
+  assert.match(template, /type: 'volume'/);
   assert.match(template, /separatorColor/);
   assert.match(template, /chart-pane-label/);
   assert.match(template, /indicatorLabel/);

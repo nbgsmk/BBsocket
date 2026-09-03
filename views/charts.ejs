@@ -55,6 +55,8 @@
       const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, { upColor: '#16803c', downColor: '#b42318', borderVisible: false, wickUpColor: '#16803c', wickDownColor: '#b42318' });
       const markers = LightweightCharts.createSeriesMarkers(candleSeries);
       let indicatorSeries = [];
+      let volumeSeries = null;
+      let volumePaneIndex = null;
       const paneLabels = new Map();
       const paneResizeObservers = new Map();
       const paneDividers = [];
@@ -150,7 +152,7 @@
       }
 
       function indicatorLabel(indicator) {
-        const names = { sma: 'SMA', ema: 'EMA', rsi: 'RSI', atr: 'ATR', vwap: 'VWAP', vwma: 'VWMA', adx: 'ADX', stochastic: 'Stochastic', macd: 'MACD', bollinger: 'Bollinger Bands', volumeSma: 'Volume SMA', volumeEma: 'Volume EMA' };
+        const names = { volume: 'Volume', sma: 'SMA', ema: 'EMA', rsi: 'RSI', atr: 'ATR', vwap: 'VWAP', vwma: 'VWMA', adx: 'ADX', stochastic: 'Stochastic', macd: 'MACD', bollinger: 'Bollinger Bands', volumeSma: 'Volume SMA', volumeEma: 'Volume EMA' };
         const argumentsList = Object.keys(indicator.parameters || {}).sort().map(name => indicator.parameters[name]);
         return (names[indicator.type] || indicator.type.toUpperCase()) + (argumentsList.length ? ' (' + argumentsList.join(', ') + ')' : '');
       }
@@ -240,11 +242,15 @@
       function draw(data, indicators = [], decisions = []) {
         candles = data; activeIndicators = indicators; strategyDecisions = decisions; candleSeries.setData(data.filter(item => Number.isFinite(Number(item.openTime))).map(item => ({ time: Math.floor(item.openTime / 1000), open: Number(item.open), high: Number(item.high), low: Number(item.low), close: Number(item.close) })));
         markers.setMarkers(decisions.filter(decision => decision.action === 'ENTER' || decision.action === 'EXIT').map(decision => ({ time: Math.floor(decision.openTime / 1000), position: decision.action === 'ENTER' ? 'belowBar' : 'aboveBar', color: decision.action === 'ENTER' ? '#16803c' : '#b42318', shape: decision.action === 'ENTER' ? 'arrowUp' : 'arrowDown', text: decision.action + ' ' + decision.strategy })));
-        indicatorSeries.forEach(series => chart.removeSeries(series)); indicatorSeries = []; seriesByKey.clear(); clearPaneLabels();
+        indicatorSeries.forEach(series => chart.removeSeries(series)); indicatorSeries = [];
+        if (volumeSeries) chart.removeSeries(volumeSeries);
+        volumeSeries = null; volumePaneIndex = null; seriesByKey.clear(); clearPaneLabels();
         const paneIndexes = new Map();
         const paneIndicators = new Map();
         let nextPaneIndex = 1;
-        indicators.forEach((indicator, indicatorIndex) => {
+        const volumeIndicators = indicators.filter(item => item.paneGroup === 'volume' || item.type === 'volumeSma' || item.type === 'volumeEma');
+        const nonVolumeIndicators = indicators.filter(item => !volumeIndicators.includes(item));
+        const addIndicator = (indicator, indicatorIndex) => {
           const group = indicator.paneGroup || indicatorKey(indicator, 'pane');
           const paneIndex = indicator.placement === 'overlay' ? 0 : (paneIndexes.has(group) ? paneIndexes.get(group) : (paneIndexes.set(group, nextPaneIndex), nextPaneIndex++));
           if (!paneIndicators.has(paneIndex)) paneIndicators.set(paneIndex, []);
@@ -255,6 +261,29 @@
             indicatorSeries.push(line);
             seriesByKey.set(indicatorKey(indicator, series.name), line);
           });
+        };
+        nonVolumeIndicators.forEach((item, index) => addIndicator(item, index));
+        if (volumeIndicators.length || data.some(item => Number.isFinite(Number(item.volume)))) {
+          volumePaneIndex = nextPaneIndex++;
+          paneIndexes.set('volume', volumePaneIndex);
+          paneIndicators.set(volumePaneIndex, []);
+          volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
+            priceFormat: { type: 'volume' },
+            priceScaleId: 'volume',
+            color: '#94a3b8'
+          }, volumePaneIndex);
+          volumeSeries.setData(data.filter(item => Number.isFinite(Number(item.openTime)) && Number.isFinite(Number(item.volume))).map(item => ({
+            time: Math.floor(item.openTime / 1000),
+            value: Number(item.volume),
+            color: Number(item.close) >= Number(item.open) ? '#16a34a' : '#dc2626'
+          })));
+          paneIndicators.get(volumePaneIndex).push({ type: 'volume', parameters: {}, series: [] });
+        }
+        volumeIndicators.forEach((item, index) => addIndicator(item, nonVolumeIndicators.length + index));
+        if (volumePaneIndex !== null) requestAnimationFrame(() => {
+          const pane = chart.panes()[volumePaneIndex];
+          if (pane && typeof pane.setHeight === 'function') pane.setHeight(140);
+          schedulePaneLabelPosition();
         });
         chart.timeScale().fitContent();
         schedulePaneLabelCreation(paneIndicators);
@@ -281,7 +310,7 @@
 
       document.getElementById('load').addEventListener('click', () => loadChart().catch(error => { message.textContent = error.message; }));
       strategySelector.addEventListener('change', () => applyStrategy().then(loadChart).catch(error => { message.textContent = error.message; }));
-      liveButton.addEventListener('click', () => { if (source) { stopLiveUpdates(); return; } let liveUrl = '/api/v1/binance/' + market.value + '/candles/live?instrument=' + encodeURIComponent(instrument.value) + '&aggregation=' + aggregation.value + '&includeIncomplete=true'; const selected = strategies.find(item => item.name === strategySelector.value); if (selected && selected.indicators.length) liveUrl += '&indicators=' + encodeURIComponent(selected.indicators.join(',')); else if (indicator.value) liveUrl += '&indicators=' + encodeURIComponent(indicator.value); source = new EventSource(liveUrl); liveButton.textContent = 'Disable live updates'; source.onmessage = event => { const payload = JSON.parse(event.data); const candle = payload.candlestick; if (!candle) return; const index = candles.findIndex(item => item.openTime === candle.openTime); if (index >= 0) candles[index] = candle; else candles.push(candle); candleSeries.update({ time: Math.floor(candle.openTime / 1000), open: Number(candle.open), high: Number(candle.high), low: Number(candle.low), close: Number(candle.close) }); if (payload.indicators) payload.indicators.forEach(item => item.series.forEach(series => { const line = seriesByKey.get(indicatorKey(item, series.name)); if (line && series.value !== null && series.value !== undefined) line.update({ time: Math.floor(candle.openTime / 1000), value: Number(series.value) }); })); }; source.onerror = () => { message.textContent = 'Live candle connection lost.'; stopLiveUpdates(); }; });
+      liveButton.addEventListener('click', () => { if (source) { stopLiveUpdates(); return; } let liveUrl = '/api/v1/binance/' + market.value + '/candles/live?instrument=' + encodeURIComponent(instrument.value) + '&aggregation=' + aggregation.value + '&includeIncomplete=true'; const selected = strategies.find(item => item.name === strategySelector.value); if (selected && selected.indicators.length) liveUrl += '&indicators=' + encodeURIComponent(selected.indicators.join(',')); else if (indicator.value) liveUrl += '&indicators=' + encodeURIComponent(indicator.value); source = new EventSource(liveUrl); liveButton.textContent = 'Disable live updates'; source.onmessage = event => { const payload = JSON.parse(event.data); const candle = payload.candlestick; if (!candle) return; const index = candles.findIndex(item => item.openTime === candle.openTime); if (index >= 0) candles[index] = candle; else candles.push(candle); const time = Math.floor(candle.openTime / 1000); candleSeries.update({ time, open: Number(candle.open), high: Number(candle.high), low: Number(candle.low), close: Number(candle.close) }); if (volumeSeries && Number.isFinite(Number(candle.volume))) volumeSeries.update({ time, value: Number(candle.volume), color: Number(candle.close) >= Number(candle.open) ? '#16a34a' : '#dc2626' }); if (payload.indicators) payload.indicators.forEach(item => item.series.forEach(series => { const line = seriesByKey.get(indicatorKey(item, series.name)); if (line && series.value !== null && series.value !== undefined) line.update({ time, value: Number(series.value) }); })); }; source.onerror = () => { message.textContent = 'Live candle connection lost.'; stopLiveUpdates(); }; });
       market.addEventListener('change', () => { stopLiveUpdates(); loadInstruments().catch(error => { message.textContent = error.message; }); });
       loadStrategies().then(loadInstruments).then(loadChart).catch(error => { message.textContent = error.message; });
     </script>

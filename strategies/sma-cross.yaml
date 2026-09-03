@@ -1,0 +1,23 @@
+name: sma-cross
+version: 1
+enabled: true
+instruments:
+  - btcusdt
+aggregation: 5m
+indicators:
+  - sma:2
+  - sma:10
+  - rsi:14
+positionEntry:
+  matchAll:
+    - left: indicator.sma:5
+      operator: crossesAbove
+      right: indicator.sma:10
+
+positionExit:
+  matchAny:
+    - { l: indicator.sma:5, op: crossesBelow, r: indicator.sma:10 }
+
+trade:
+  side: long
+  size: 0.01
