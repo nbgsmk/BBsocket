@@ -21,7 +21,13 @@ function fail(message, source, path) {
   throw new Error('Invalid strategy: ' + message + locationFor(source, path));
 }
 
-function validateCondition(condition, path, source) {
+function validateReference(reference, path, source, aliases) {
+  if (typeof reference !== 'string') return;
+  const match = /^(?:previous\.)?indicator\.([A-Za-z][A-Za-z0-9_]*)(?:\.|$)/.exec(reference);
+  if (match && !aliases.has(match[1])) fail(path + ' references unknown indicator alias ' + JSON.stringify(match[1]), source, path);
+}
+
+function validateCondition(condition, path, source, aliases) {
   try { condition = normalizeCondition(condition); }
   catch (error) { fail(path + ' ' + error.message.toLowerCase(), source, path); }
   if (!condition || typeof condition !== 'object' || Array.isArray(condition)) fail(path + ' must be an object', source, path);
@@ -29,17 +35,19 @@ function validateCondition(condition, path, source) {
   for (const key of logicalKeys) {
     if (condition[key] !== undefined) {
       if (!Array.isArray(condition[key]) || condition[key].length === 0) fail(path + '.' + key + ' must be a non-empty array', source, path + '.' + key);
-      condition[key].forEach((child, index) => validateCondition(child, path + '.' + key + '[' + index + ']', source));
+      condition[key].forEach((child, index) => validateCondition(child, path + '.' + key + '[' + index + ']', source, aliases));
       return;
     }
   }
   if (condition.not !== undefined) {
-    validateCondition(condition.not, path + '.not', source);
+    validateCondition(condition.not, path + '.not', source, aliases);
     return;
   }
   if (typeof condition.left !== 'string' || !condition.left.trim()) fail(path + '.left must be a non-empty reference', source, path + '.left');
+  validateReference(condition.left, path + '.left', source, aliases);
   if (!OPERATORS.has(condition.operator)) fail(path + '.operator is unsupported', source, path + '.operator');
   if (condition.right === undefined && condition.value === undefined) fail(path + ' requires right or value', source, path);
+  validateReference(condition.right, path + '.right', source, aliases);
   if (condition.operator === 'between' && (!Array.isArray(condition.value) || condition.value.length !== 2)) {
     fail(path + '.value must contain exactly two values for between', source, path + '.value');
   }
@@ -64,8 +72,8 @@ function validateStrategy(strategy, source) {
       parseIndicatorSpecifications(item.indicator);
     });
   } catch (error) { if (error.message.startsWith('Invalid strategy: ')) throw error; fail(error.message, source, 'indicators'); }
-  validateCondition(strategy.positionEntry, 'positionEntry', source);
-  validateCondition(strategy.positionExit, 'positionExit', source);
+  validateCondition(strategy.positionEntry, 'positionEntry', source, aliases);
+  validateCondition(strategy.positionExit, 'positionExit', source, aliases);
   if (strategy.trade !== undefined && (typeof strategy.trade !== 'object' || typeof strategy.trade.side !== 'string' || typeof strategy.trade.size !== 'number' || strategy.trade.size <= 0)) fail('trade must define a positive numeric size and side');
   return {
     ...strategy,

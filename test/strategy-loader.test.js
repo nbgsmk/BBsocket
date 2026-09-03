@@ -25,11 +25,11 @@ positionEntry:
   matchAll:
     - left: price.close
       operator: ">"
-      right: indicator.sma:20
+      right: indicator.smaFast
 positionExit:
   left: price.close
   operator: "<"
-  right: indicator.sma:20
+  right: indicator.smaFast
 `;
 
 test('loads and normalizes a YAML strategy', () => {
@@ -61,6 +61,12 @@ test('rejects legacy position condition keys', () => {
   const legacy = valid.replace('positionEntry:', 'open:').replace('positionExit:', 'close:');
   const { directory, filePath } = temporaryStrategy(legacy);
   assert.throws(() => loadStrategy(filePath), /Invalid strategy: positionEntry must be an object/);
+  fs.rmSync(directory, { recursive: true, force: true });
+});
+
+test('rejects unknown indicator aliases in conditions', () => {
+  const { directory, filePath } = temporaryStrategy(valid.replace('indicator.smaFast', 'indicator.missingAlias'));
+  assert.throws(() => loadStrategy(filePath), /unknown indicator alias/);
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
