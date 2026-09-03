@@ -2,54 +2,69 @@ const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, c
 
 const indicatorRegistry = Object.freeze({
   sma: {
+    placement: 'overlay',
     outputSeries: ['value'],
     calculate: (candles, { period }) => ({ value: calculateSma(candles, period) })
   },
   ema: {
+    placement: 'overlay',
     outputSeries: ['value'],
     calculate: (candles, { period }) => ({ value: calculateEma(candles, period) })
   },
   rsi: {
+    placement: 'pane',
     outputSeries: ['value'],
     calculate: (candles, { period }) => ({ value: calculateRsi(candles, period) })
   },
   atr: {
+    placement: 'pane',
     outputSeries: ['value'],
     calculate: (candles, { period }) => ({ value: calculateAtr(candles, period) })
   },
   vwap: {
+    placement: 'overlay',
     parameterNames: [],
     outputSeries: ['value'],
     calculate: candles => ({ value: calculateVwap(candles) })
   },
   stochastic: {
+    placement: 'pane',
     parameterNames: ['kPeriod', 'dPeriod', 'slowing'],
     outputSeries: ['k', 'd'],
     calculate: (candles, parameters) => calculateStochastic(candles, parameters.kPeriod, parameters.dPeriod, parameters.slowing)
   },
   adx: {
+    placement: 'pane',
     outputSeries: ['adx', 'plusDi', 'minusDi'],
     calculate: (candles, { period }) => calculateAdx(candles, period)
   },
   macd: {
+    placement: 'pane',
+    paneGroup: 'macd',
     parameterNames: ['fastPeriod', 'slowPeriod', 'signalPeriod'],
     outputSeries: ['macd', 'signal', 'histogram'],
     calculate: (candles, parameters) => calculateMacd(candles, parameters.fastPeriod, parameters.slowPeriod, parameters.signalPeriod)
   },
   bollinger: {
+    placement: 'overlay',
     parameterNames: ['period', 'standardDeviations'],
     outputSeries: ['middle', 'upper', 'lower'],
     calculate: (candles, parameters) => calculateBollingerBands(candles, parameters.period, parameters.standardDeviations)
   },
   volumeSma: {
+    placement: 'pane',
+    paneGroup: 'volume',
     outputSeries: ['value'],
     calculate: (candles, { period }) => ({ value: calculateVolumeSma(candles, period) })
   },
   volumeEma: {
+    placement: 'pane',
+    paneGroup: 'volume',
     outputSeries: ['value'],
     calculate: (candles, { period }) => ({ value: calculateVolumeEma(candles, period) })
   },
   vwma: {
+    placement: 'overlay',
     outputSeries: ['value'],
     calculate: (candles, { period }) => ({ value: calculateVwma(candles, period) })
   }
@@ -91,6 +106,8 @@ function calculateIndicators(candles, specifications) {
     return {
       type,
       parameters,
+      placement: definition.placement,
+      ...(definition.paneGroup ? { paneGroup: definition.paneGroup } : {}),
       series: definition.outputSeries.map(name => ({ name, values: calculated[name] }))
     };
   });

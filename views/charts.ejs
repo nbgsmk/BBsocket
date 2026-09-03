@@ -10,7 +10,7 @@
       h1 { margin-top: 0; }
       button { cursor: pointer; margin: 0 .35rem .35rem 0; padding: .35rem .65rem; }
       label { margin-right: .5rem; }
-      #chart { border: 1px solid #bbb; height: 520px; width: 100%; }
+      #chart { border: 1px solid #bbb; height: 720px; width: 100%; }
       #message { color: #a00; min-height: 1.5rem; }
       #summary { font-family: monospace; white-space: pre-wrap; }
     </style>
@@ -44,11 +44,12 @@
       const summary = document.getElementById('summary');
       const liveButton = document.getElementById('live');
       let candles = [], source = null, activeIndicators = [], strategyDecisions = [], strategies = [];
-      const chart = LightweightCharts.createChart(chartElement, { height: 520, layout: { background: { color: '#ffffff' }, textColor: '#333333' }, grid: { vertLines: { color: '#eeeeee' }, horzLines: { color: '#eeeeee' } } });
+      const seriesByKey = new Map();
+      const chart = LightweightCharts.createChart(chartElement, { height: 720, layout: { background: { color: '#ffffff' }, textColor: '#333333' }, grid: { vertLines: { color: '#eeeeee' }, horzLines: { color: '#eeeeee' } } });
       const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, { upColor: '#16803c', downColor: '#b42318', borderVisible: false, wickUpColor: '#16803c', wickDownColor: '#b42318' });
       const markers = LightweightCharts.createSeriesMarkers(candleSeries);
       let indicatorSeries = [];
-      new ResizeObserver(() => chart.resize(chartElement.clientWidth, 520)).observe(chartElement);
+      new ResizeObserver(() => chart.resize(chartElement.clientWidth, 720)).observe(chartElement);
 
       function stopLiveUpdates() {
         if (source) source.close();
@@ -78,11 +79,27 @@
         instrument.value = selected.instrument;
       }
 
+      function indicatorKey(indicator, seriesName) {
+        const parameters = Object.keys(indicator.parameters || {}).sort().map(name => indicator.parameters[name]);
+        return indicator.type + (parameters.length ? ':' + parameters.join(':') : '') + '.' + seriesName;
+      }
+
       function draw(data, indicators = [], decisions = []) {
         candles = data; activeIndicators = indicators; strategyDecisions = decisions; candleSeries.setData(data.filter(item => Number.isFinite(Number(item.openTime))).map(item => ({ time: Math.floor(item.openTime / 1000), open: Number(item.open), high: Number(item.high), low: Number(item.low), close: Number(item.close) })));
         markers.setMarkers(decisions.filter(decision => decision.action === 'ENTER' || decision.action === 'EXIT').map(decision => ({ time: Math.floor(decision.openTime / 1000), position: decision.action === 'ENTER' ? 'belowBar' : 'aboveBar', color: decision.action === 'ENTER' ? '#16803c' : '#b42318', shape: decision.action === 'ENTER' ? 'arrowUp' : 'arrowDown', text: decision.action + ' ' + decision.strategy })));
-        indicatorSeries.forEach(series => chart.removeSeries(series)); indicatorSeries = [];
-        indicators.forEach((indicator, indicatorIndex) => indicator.series.forEach(series => { const line = chart.addSeries(LightweightCharts.LineSeries, { color: ['#2563eb', '#9333ea', '#ea580c'][indicatorIndex % 3], lineWidth: 2 }); line.setData(series.values.filter(point => point.value !== null && point.value !== undefined).map(point => ({ time: Math.floor(point.openTime / 1000), value: Number(point.value) }))); indicatorSeries.push(line); }));
+        indicatorSeries.forEach(series => chart.removeSeries(series)); indicatorSeries = []; seriesByKey.clear();
+        const paneIndexes = new Map();
+        let nextPaneIndex = 1;
+        indicators.forEach((indicator, indicatorIndex) => {
+          const group = indicator.paneGroup || indicatorKey(indicator, 'pane');
+          const paneIndex = indicator.placement === 'overlay' ? 0 : (paneIndexes.has(group) ? paneIndexes.get(group) : (paneIndexes.set(group, nextPaneIndex), nextPaneIndex++));
+          indicator.series.forEach((series, seriesIndex) => {
+            const line = chart.addSeries(LightweightCharts.LineSeries, { color: ['#2563eb', '#9333ea', '#ea580c', '#16a34a'][(indicatorIndex + seriesIndex) % 4], lineWidth: 2 }, paneIndex);
+            line.setData(series.values.filter(point => point.value !== null && point.value !== undefined).map(point => ({ time: Math.floor(point.openTime / 1000), value: Number(point.value) })));
+            indicatorSeries.push(line);
+            seriesByKey.set(indicatorKey(indicator, series.name), line);
+          });
+        });
         chart.timeScale().fitContent();
         const selected = strategies.find(item => item.name === strategySelector.value);
         summary.textContent = data.length + ' candles | latest close: ' + data[data.length - 1].close + ' | ' + new Date(data[data.length - 1].closeTime).toISOString() + (selected ? ' | ' + selected.name + ' v' + selected.version + ' | decisions: ' + decisions.length : '');
@@ -107,7 +124,7 @@
 
       document.getElementById('load').addEventListener('click', () => loadChart().catch(error => { message.textContent = error.message; }));
       strategySelector.addEventListener('change', () => applyStrategy().then(loadChart).catch(error => { message.textContent = error.message; }));
-      liveButton.addEventListener('click', () => { if (source) { stopLiveUpdates(); return; } let liveUrl = '/api/v1/binance/' + market.value + '/candles/live?instrument=' + encodeURIComponent(instrument.value) + '&aggregation=' + aggregation.value + '&includeIncomplete=true'; if (indicator.value) liveUrl += '&indicators=' + encodeURIComponent(indicator.value); source = new EventSource(liveUrl); liveButton.textContent = 'Disable live updates'; source.onmessage = event => { const payload = JSON.parse(event.data); const candle = payload.candlestick; if (!candle) return; const index = candles.findIndex(item => item.openTime === candle.openTime); if (index >= 0) candles[index] = candle; else candles.push(candle); candleSeries.update({ time: Math.floor(candle.openTime / 1000), open: Number(candle.open), high: Number(candle.high), low: Number(candle.low), close: Number(candle.close) }); if (payload.indicators) payload.indicators.forEach((item, itemIndex) => item.series.forEach((series, seriesIndex) => { const line = indicatorSeries[itemIndex + seriesIndex]; if (line && series.value !== null && series.value !== undefined) line.update({ time: Math.floor(candle.openTime / 1000), value: Number(series.value) }); })); }; source.onerror = () => { message.textContent = 'Live candle connection lost.'; stopLiveUpdates(); }; });
+      liveButton.addEventListener('click', () => { if (source) { stopLiveUpdates(); return; } let liveUrl = '/api/v1/binance/' + market.value + '/candles/live?instrument=' + encodeURIComponent(instrument.value) + '&aggregation=' + aggregation.value + '&includeIncomplete=true'; const selected = strategies.find(item => item.name === strategySelector.value); if (selected && selected.indicators.length) liveUrl += '&indicators=' + encodeURIComponent(selected.indicators.join(',')); else if (indicator.value) liveUrl += '&indicators=' + encodeURIComponent(indicator.value); source = new EventSource(liveUrl); liveButton.textContent = 'Disable live updates'; source.onmessage = event => { const payload = JSON.parse(event.data); const candle = payload.candlestick; if (!candle) return; const index = candles.findIndex(item => item.openTime === candle.openTime); if (index >= 0) candles[index] = candle; else candles.push(candle); candleSeries.update({ time: Math.floor(candle.openTime / 1000), open: Number(candle.open), high: Number(candle.high), low: Number(candle.low), close: Number(candle.close) }); if (payload.indicators) payload.indicators.forEach(item => item.series.forEach(series => { const line = seriesByKey.get(indicatorKey(item, series.name)); if (line && series.value !== null && series.value !== undefined) line.update({ time: Math.floor(candle.openTime / 1000), value: Number(series.value) }); })); }; source.onerror = () => { message.textContent = 'Live candle connection lost.'; stopLiveUpdates(); }; });
       market.addEventListener('change', () => { stopLiveUpdates(); loadInstruments().catch(error => { message.textContent = error.message; }); });
       loadStrategies().then(loadInstruments).then(loadChart).catch(error => { message.textContent = error.message; });
     </script>

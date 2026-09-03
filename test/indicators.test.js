@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { calculateSma, calculateEma, calculateRsi, calculateAtr, calculateVwap, calculateStochastic, calculateAdx, calculateMacd, calculateVolumeSma, calculateVolumeEma, calculateVwma, calculateBollingerBands } = require('../services/market-data/indicators');
-const { parseIndicatorSpecifications, calculateIndicators } = require('../services/market-data/indicator-registry');
+const { indicatorRegistry, parseIndicatorSpecifications, calculateIndicators } = require('../services/market-data/indicator-registry');
 
 function candles(closes) {
   return closes.map((close, index) => ({ openTime: index * 60000, close: String(close) }));
@@ -39,6 +39,16 @@ test('parses multiple indicator specifications and calculates aligned series', (
   assert.deepEqual(result.map(indicator => [indicator.type, indicator.parameters.period]), [['sma', 2], ['ema', 3]]);
   assert.deepEqual(result[0].series[0].values.map(point => point.value), [null, 15, 25]);
   assert.deepEqual(result[1].series[0].values.map(point => point.openTime), [0, 60000, 120000]);
+});
+
+test('defines chart placement metadata for every registered indicator', () => {
+  assert.deepEqual(Object.fromEntries(Object.entries(indicatorRegistry).map(([type, definition]) => [type, definition.placement])), {
+    sma: 'overlay', ema: 'overlay', rsi: 'pane', atr: 'pane', vwap: 'overlay',
+    stochastic: 'pane', adx: 'pane', macd: 'pane', bollinger: 'overlay',
+    volumeSma: 'pane', volumeEma: 'pane', vwma: 'overlay'
+  });
+  assert.equal(indicatorRegistry.macd.paneGroup, 'macd');
+  assert.equal(indicatorRegistry.volumeSma.paneGroup, 'volume');
 });
 
 test('rejects malformed indicator specifications', () => {
