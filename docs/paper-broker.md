@@ -64,7 +64,7 @@ These endpoints are read-only. Results are snapshots and do not allow callers to
 
 ## Persistence
 
-When an enabled strategy runtime is configured, decisions, open positions, and completed trades are stored in SQLite. Set `STRATEGY_DATA_PATH` to choose the database location; the default is `data/strategy.sqlite`. Mount that directory as a Docker volume so state survives container replacement:
+When enabled strategy files are configured, decisions, open positions, and completed trades are stored in the shared SQLite database at `data/strategy.sqlite`. Records are namespaced by strategy name/version, so independent strategies can trade the same instrument without sharing paper positions. Mount that directory as a Docker volume so state survives container replacement:
 
 ```yaml
 volumes:

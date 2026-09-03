@@ -228,7 +228,7 @@ PORT=8080 npm start
 
 Strategy and paper-trading behavior is documented in [docs/strategy-engine.md](docs/strategy-engine.md) and [docs/paper-broker.md](docs/paper-broker.md).
 
-Set `STRATEGY_DATA_PATH` to configure the SQLite file used for strategy decisions, positions, and paper trades. In Docker, mount its parent directory as a persistent volume.
+Strategy files are loaded automatically from `strategies/` at startup. Each YAML file defines one independent strategy and one instrument; enabled files run headlessly and share the persistent SQLite database at `data/strategy.sqlite`. Mount the `data/` directory as a persistent volume in Docker.
 
 All responses are JSON except the dashboard HTML page and the live Server-Sent Events stream.
 

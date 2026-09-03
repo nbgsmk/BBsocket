@@ -10,23 +10,17 @@ var BinanceSocket = require('./services/exchanges/binance/service').BinanceSocke
 var createApiV1Routes = require('./routes/api/v1');
 var dashboardRouter = require('./routes/dashboard');
 var chartsRouter = require('./routes/charts');
-var { createStrategyRuntime, defaultStrategyFile } = require('./services/strategy/runtime');
+var { createStrategyRuntimes, defaultStrategiesDirectory } = require('./services/strategy/runtime');
 
 var app = express();
 var binanceCoinMSocket = new BinanceSocket({ marketType: 'coin-m' });
 var binanceUsdMSocket = new BinanceSocket({ marketType: 'usd-m' });
 var strategyRuntime;
 try {
-  strategyRuntime = createStrategyRuntime({ strategyFile: process.env.STRATEGY_FILE || defaultStrategyFile, services: { coinM: binanceCoinMSocket, usdM: binanceUsdMSocket } });
-  if (strategyRuntime.strategy) {
-    console.info('Strategy loaded:', strategyRuntime.strategy.name + ' v' + strategyRuntime.strategy.version,
-      'enabled=' + strategyRuntime.strategy.enabled,
-      'instruments=' + strategyRuntime.strategy.instruments.join(','),
-      'aggregation=' + strategyRuntime.strategy.aggregation);
-  }
+  strategyRuntime = createStrategyRuntimes({ strategiesDirectory: defaultStrategiesDirectory, services: { coinM: binanceCoinMSocket, usdM: binanceUsdMSocket } });
 } catch (error) {
   console.error('Strategy startup failed:', error.message);
-  strategyRuntime = { strategy: null, engine: null, broker: null };
+  strategyRuntime = { runtimes: [], errors: [{ file: null, error: error.message }] };
 }
 
 // view engine setup

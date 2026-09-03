@@ -22,7 +22,7 @@ The engine subscribes to internal candle events. SSE is only the client-facing t
 
 ## Configuration
 
-Set `STRATEGY_FILE` to a YAML strategy file before starting the application. The sample file is `strategies/sample.yaml` and is disabled by default.
+On startup, the application loads every `.yaml` or `.yml` file in `strategies/`. Each file is an independent strategy run and must define exactly one instrument. Files with `enabled: false` are loaded for visibility but do not start an engine. Invalid files are reported while other valid strategies continue starting. The sample file is `strategies/sample.yaml` and is disabled by default.
 
 Required fields are:
 
@@ -46,7 +46,7 @@ The top-level strategy keywords are:
 | `name` | yes | Strategy name. |
 | `version` | yes | Positive integer strategy version. |
 | `enabled` | yes | Whether the strategy is active. |
-| `instruments` | yes | Non-empty list of instruments. Values are normalized to lowercase. |
+| `instruments` | yes | A one-item list containing the instrument for this strategy. Values are normalized to lowercase. |
 | `aggregation` | yes | Candle aggregation interval. |
 | `indicators` | yes | List of indicator specifications. An empty list is allowed. |
 | `positionEntry` | yes | Condition that can open a position. |
@@ -183,7 +183,7 @@ The engine emits `ENTER`, `EXIT`, and `HOLD` decisions containing strategy metad
 
 ```text
 GET /api/v1/strategy/status
-GET /api/v1/strategy/decisions?instrument=btcusdt&limit=100
+GET /api/v1/strategy/decisions?strategy=volume-confirmed-trend&instrument=btcusdt&limit=100
 ```
 
-The sample strategy is disabled by default. Invalid YAML or unsupported references prevent that strategy from starting.
+The sample strategy is disabled by default. Invalid YAML or unsupported references prevent that strategy from starting, but do not prevent other valid strategy files from starting. Strategy status includes per-file startup errors.
