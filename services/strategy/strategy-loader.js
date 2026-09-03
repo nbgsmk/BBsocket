@@ -6,35 +6,46 @@ const { normalizeCondition } = require('./condition-normalizer');
 const AGGREGATIONS = new Set(['1s', '1m', '2m', '3m', '5m', '10m', '15m', '20m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '2d', '3d', '4d', '5d', '1w']);
 const OPERATORS = new Set(['=', '!=', '>', '>=', '<', '<=', 'between', 'crossesAbove', 'crossesBelow']);
 
-function fail(message) {
-  throw new Error('Invalid strategy: ' + message);
+function locationFor(source, path) {
+  if (!source) return '';
+  const key = String(path).split('.').pop().replace(/\[\d+\]$/, '');
+  const match = new RegExp('^\\s*(?:-\\s*)?' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*:', 'm').exec(source);
+  if (!match) return '';
+  const before = source.slice(0, match.index + match[0].indexOf(key));
+  const line = before.split('\n').length;
+  const column = before.length - before.lastIndexOf('\n');
+  return ' (line ' + line + ', column ' + column + ')';
 }
 
-function validateCondition(condition, path) {
+function fail(message, source, path) {
+  throw new Error('Invalid strategy: ' + message + locationFor(source, path));
+}
+
+function validateCondition(condition, path, source) {
   try { condition = normalizeCondition(condition); }
-  catch (error) { fail(path + ' ' + error.message.toLowerCase()); }
-  if (!condition || typeof condition !== 'object' || Array.isArray(condition)) fail(path + ' must be an object');
+  catch (error) { fail(path + ' ' + error.message.toLowerCase(), source, path); }
+  if (!condition || typeof condition !== 'object' || Array.isArray(condition)) fail(path + ' must be an object', source, path);
   const logicalKeys = ['matchAll', 'matchAny'];
   for (const key of logicalKeys) {
     if (condition[key] !== undefined) {
-      if (!Array.isArray(condition[key]) || condition[key].length === 0) fail(path + '.' + key + ' must be a non-empty array');
-      condition[key].forEach((child, index) => validateCondition(child, path + '.' + key + '[' + index + ']'));
+      if (!Array.isArray(condition[key]) || condition[key].length === 0) fail(path + '.' + key + ' must be a non-empty array', source, path + '.' + key);
+      condition[key].forEach((child, index) => validateCondition(child, path + '.' + key + '[' + index + ']', source));
       return;
     }
   }
   if (condition.not !== undefined) {
-    validateCondition(condition.not, path + '.not');
+    validateCondition(condition.not, path + '.not', source);
     return;
   }
-  if (typeof condition.left !== 'string' || !condition.left.trim()) fail(path + '.left must be a non-empty reference');
-  if (!OPERATORS.has(condition.operator)) fail(path + '.operator is unsupported');
-  if (condition.right === undefined && condition.value === undefined) fail(path + ' requires right or value');
+  if (typeof condition.left !== 'string' || !condition.left.trim()) fail(path + '.left must be a non-empty reference', source, path + '.left');
+  if (!OPERATORS.has(condition.operator)) fail(path + '.operator is unsupported', source, path + '.operator');
+  if (condition.right === undefined && condition.value === undefined) fail(path + ' requires right or value', source, path);
   if (condition.operator === 'between' && (!Array.isArray(condition.value) || condition.value.length !== 2)) {
-    fail(path + '.value must contain exactly two values for between');
+    fail(path + '.value must contain exactly two values for between', source, path + '.value');
   }
 }
 
-function validateStrategy(strategy) {
+function validateStrategy(strategy, source) {
   if (!strategy || typeof strategy !== 'object' || Array.isArray(strategy)) fail('root must be an object');
   if (typeof strategy.name !== 'string' || !strategy.name.trim()) fail('name must be a non-empty string');
   if (!Number.isInteger(strategy.version) || strategy.version < 1) fail('version must be a positive integer');
@@ -45,16 +56,16 @@ function validateStrategy(strategy) {
   const aliases = new Set();
   try {
     strategy.indicators.forEach((item, index) => {
-      if (!item || typeof item !== 'object' || Array.isArray(item)) fail('indicators[' + index + '] must define name and indicator');
-      if (typeof item.name !== 'string' || !/^[A-Za-z][A-Za-z0-9_]*$/.test(item.name)) fail('indicators[' + index + '].name is invalid');
-      if (aliases.has(item.name)) fail('indicator alias must be unique: ' + item.name);
+      if (!item || typeof item !== 'object' || Array.isArray(item)) fail('indicators[' + index + '] must define name and indicator', source, 'indicators[' + index + ']');
+      if (typeof item.name !== 'string' || !/^[A-Za-z][A-Za-z0-9_]*$/.test(item.name)) fail('indicators[' + index + '].name is invalid', source, 'indicators[' + index + '].name');
+      if (aliases.has(item.name)) fail('indicator alias must be unique: ' + item.name, source, 'indicators[' + index + '].name');
       aliases.add(item.name);
-      if (typeof item.indicator !== 'string' || !item.indicator.trim()) fail('indicators[' + index + '].indicator must be a specification');
+      if (typeof item.indicator !== 'string' || !item.indicator.trim()) fail('indicators[' + index + '].indicator must be a specification', source, 'indicators[' + index + '].indicator');
       parseIndicatorSpecifications(item.indicator);
     });
-  } catch (error) { fail(error.message.replace(/^Invalid strategy: /, '')); }
-  validateCondition(strategy.positionEntry, 'positionEntry');
-  validateCondition(strategy.positionExit, 'positionExit');
+  } catch (error) { if (error.message.startsWith('Invalid strategy: ')) throw error; fail(error.message, source, 'indicators'); }
+  validateCondition(strategy.positionEntry, 'positionEntry', source);
+  validateCondition(strategy.positionExit, 'positionExit', source);
   if (strategy.trade !== undefined && (typeof strategy.trade !== 'object' || typeof strategy.trade.side !== 'string' || typeof strategy.trade.size !== 'number' || strategy.trade.size <= 0)) fail('trade must define a positive numeric size and side');
   return {
     ...strategy,
@@ -71,7 +82,7 @@ function loadStrategy(filePath) {
   let strategy;
   try { strategy = YAML.parse(source); }
   catch (error) { throw new Error('Unable to parse strategy YAML: ' + error.message); }
-  return validateStrategy(strategy);
+  return validateStrategy(strategy, source);
 }
 
 module.exports = { loadStrategy, validateStrategy };
