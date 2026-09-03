@@ -22,7 +22,7 @@ The engine subscribes to internal candle events. SSE is only the client-facing t
 
 ## Configuration
 
-Set `STRATEGY_FILE` to a YAML strategy file before starting the application. The sample file is `config/strategies/sample.yaml` and is disabled by default.
+Set `STRATEGY_FILE` to a YAML strategy file before starting the application. The sample file is `strategies/sample.yaml` and is disabled by default.
 
 Required fields are:
 

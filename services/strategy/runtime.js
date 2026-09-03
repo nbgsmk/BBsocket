@@ -19,4 +19,4 @@ function createStrategyRuntime({ strategyFile, services, dataPath = process.env.
   return { strategy, engine, broker, service, repository };
 }
 
-module.exports = { createStrategyRuntime, defaultStrategyFile: path.join(__dirname, '..', '..', 'config', 'strategies', 'sample.yaml') };
+module.exports = { createStrategyRuntime, defaultStrategyFile: path.join(__dirname, '..', '..', 'strategies', 'sample.yaml') };
