@@ -12,6 +12,8 @@
       label { margin-right: .5rem; }
       #chart { position: relative; border: 1px solid #bbb; height: 720px; width: 100%; }
       #pane-labels { position: absolute; inset: 0; z-index: 20; pointer-events: none; overflow: hidden; }
+      #pane-dividers { position: absolute; inset: 0; z-index: 15; pointer-events: none; overflow: hidden; }
+      .chart-pane-divider { position: absolute; left: 0; height: 1px; background: #475569; box-shadow: 0 1px 2px rgba(15, 23, 42, .25); }
       .chart-pane-label { position: absolute; z-index: 10; top: 6px; left: 8px; padding: 2px 6px; border-radius: 3px; background: rgba(255, 255, 255, .88); color: #4b5563; font: 11px -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif; pointer-events: none; white-space: nowrap; }
       #message { color: #a00; min-height: 1.5rem; }
       #summary { font-family: monospace; white-space: pre-wrap; }
@@ -30,7 +32,7 @@
       <button type="button" id="load">Load chart</button>
       <button type="button" id="live">Enable live updates</button>
       <p id="message" role="alert"></p>
-      <div id="chart"><div id="pane-labels"></div></div>
+      <div id="chart"><div id="pane-dividers"></div><div id="pane-labels"></div></div>
       <p id="summary">Load a chart to begin.</p>
     </main>
     <script src="/vendor/lightweight-charts.standalone.production.js"></script>
@@ -46,14 +48,16 @@
       const summary = document.getElementById('summary');
       const liveButton = document.getElementById('live');
       const paneLabelsElement = document.getElementById('pane-labels');
+      const paneDividersElement = document.getElementById('pane-dividers');
       let candles = [], source = null, activeIndicators = [], strategyDecisions = [], strategies = [];
       const seriesByKey = new Map();
-      const chart = LightweightCharts.createChart(chartElement, { height: 720, layout: { background: { color: '#ffffff' }, textColor: '#333333' }, grid: { vertLines: { color: '#eeeeee' }, horzLines: { color: '#eeeeee' } }, panes: { enableResize: true, separatorColor: '#cbd5e1', separatorHoverColor: '#94a3b8' } });
+      const chart = LightweightCharts.createChart(chartElement, { height: 720, layout: { background: { color: '#ffffff' }, textColor: '#333333' }, grid: { vertLines: { color: '#eeeeee' }, horzLines: { color: '#eeeeee' } }, panes: { enableResize: true, separatorColor: '#64748b', separatorHoverColor: '#334155' } });
       const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, { upColor: '#16803c', downColor: '#b42318', borderVisible: false, wickUpColor: '#16803c', wickDownColor: '#b42318' });
       const markers = LightweightCharts.createSeriesMarkers(candleSeries);
       let indicatorSeries = [];
       const paneLabels = new Map();
       const paneResizeObservers = new Map();
+      const paneDividers = [];
       let paneLabelCreationFrame = null;
       let paneLabelPositionFrame = null;
       new ResizeObserver(() => { chart.resize(chartElement.clientWidth, 720); schedulePaneLabelPosition(); }).observe(chartElement);
@@ -164,6 +168,8 @@
         paneResizeObservers.clear();
         paneLabels.forEach(({ label }) => label.remove());
         paneLabels.clear();
+        paneDividers.forEach(divider => divider.remove());
+        paneDividers.length = 0;
       }
 
       function schedulePaneLabelPosition() {
@@ -171,6 +177,7 @@
         paneLabelPositionFrame = requestAnimationFrame(() => {
           paneLabelPositionFrame = null;
           positionPaneLabels();
+          positionPaneDividers();
         });
       }
 
@@ -192,6 +199,28 @@
           label.style.left = Math.max(0, paneRect.left - chartLeft + 8) + 'px';
           label.style.top = Math.max(0, paneRect.top - chartTop + 6) + 'px';
         });
+      }
+
+      function positionPaneDividers() {
+        const chartRect = chartElement.getBoundingClientRect();
+        const chartTop = chartRect.top + chartElement.clientTop;
+        const panes = chart.panes();
+        while (paneDividers.length < Math.max(0, panes.length - 1)) {
+          const divider = document.createElement('div');
+          divider.className = 'chart-pane-divider';
+          paneDividersElement.appendChild(divider);
+          paneDividers.push(divider);
+        }
+        while (paneDividers.length > Math.max(0, panes.length - 1)) paneDividers.pop().remove();
+        for (let index = 0; index < paneDividers.length; index += 1) {
+          const upper = panes[index] && panes[index].getHTMLElement();
+          const lower = panes[index + 1] && panes[index + 1].getHTMLElement();
+          if (!upper || !lower) continue;
+          const upperRect = upper.getBoundingClientRect();
+          const lowerRect = lower.getBoundingClientRect();
+          paneDividers[index].style.top = Math.round(((upperRect.bottom + lowerRect.top) / 2) - chartTop - 1.5) + 'px';
+          paneDividers[index].style.width = chartElement.clientWidth + 'px';
+        }
       }
 
       function addPaneLabel(paneIndex, indicators) {

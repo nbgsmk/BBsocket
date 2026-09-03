@@ -26,6 +26,8 @@ test('chart page contains data controls and live chart integration', () => {
   assert.match(template, /indicatorLabel/);
   assert.match(template, /clearPaneLabels/);
   assert.match(template, /id="pane-labels"/);
+  assert.match(template, /id="pane-dividers"/);
+  assert.match(template, /chart-pane-divider/);
   assert.match(template, /getBoundingClientRect/);
   assert.match(template, /positionPaneLabels/);
   assert.match(template, /schedulePaneLabelPosition/);
@@ -38,8 +40,10 @@ test('chart page contains data controls and live chart integration', () => {
   assert.match(template, /scalePriceFromWheel/);
   assert.match(template, /setVisibleRange/);
   assert.match(template, /capture: true/);
-  assert.match(template, /separatorColor: '#cbd5e1'/);
-  assert.match(template, /separatorHoverColor: '#94a3b8'/);
+  assert.match(template, /separatorColor: '#64748b'/);
+  assert.match(template, /separatorHoverColor: '#334155'/);
   assert.doesNotMatch(template, /separatorColor: '#ffffff'/);
+  assert.match(template, /pointer-events: none/);
+  assert.match(template, /positionPaneDividers/);
   assert.doesNotMatch(template, /borderTop = '16px solid #ffffff'/);
 });
