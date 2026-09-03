@@ -16,4 +16,5 @@ test('chart page contains data controls and live chart integration', () => {
   assert.match(template, /api\/v1\/strategy\/status/);
   assert.match(template, /api\/v1\/strategy\/decisions/);
   assert.match(template, /setMarkers/);
+  assert.match(template, /selected\.indicators.*join/);
 });
