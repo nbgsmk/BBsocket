@@ -34,5 +34,12 @@ test('chart page contains data controls and live chart integration', () => {
   assert.match(template, /paneLabelCreationFrame/);
   assert.match(template, /schedulePaneLabelCreation/);
   assert.match(template, /paneResizeObservers/);
+  assert.match(template, /panePriceScaleAtPoint/);
+  assert.match(template, /scalePriceFromWheel/);
+  assert.match(template, /setVisibleRange/);
+  assert.match(template, /capture: true/);
+  assert.match(template, /separatorColor: '#cbd5e1'/);
+  assert.match(template, /separatorHoverColor: '#94a3b8'/);
+  assert.doesNotMatch(template, /separatorColor: '#ffffff'/);
   assert.doesNotMatch(template, /borderTop = '16px solid #ffffff'/);
 });
