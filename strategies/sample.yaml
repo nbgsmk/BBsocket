@@ -1,6 +1,6 @@
 name: volume-confirmed-trend
 version: 1
-enabled: false
+enabled: true
 instruments:
   - btcusdt
 aggregation: 5m

@@ -19,6 +19,7 @@
     <main>
       <h1><%= title %></h1>
       <p>Historical and live candlestick visualization. Strategy execution remains in the backend.</p>
+      <label>Strategy <select id="strategy-selector"><option value="">Manual chart</option></select></label>
       <label>Market <select id="market-type"><option value="usd-m">USD-M</option><option value="coin-m">Coin-M</option></select></label>
       <label>Instrument <select id="instrument"></select></label>
       <label>Aggregation <select id="aggregation"><option>1m</option><option>5m</option><option>15m</option><option>1h</option></select></label>
@@ -33,6 +34,7 @@
     <script src="/vendor/lightweight-charts.standalone.production.js"></script>
     <script>
       const market = document.getElementById('market-type');
+      const strategySelector = document.getElementById('strategy-selector');
       const instrument = document.getElementById('instrument');
       const aggregation = document.getElementById('aggregation');
       const limit = document.getElementById('limit');
@@ -41,9 +43,10 @@
       const message = document.getElementById('message');
       const summary = document.getElementById('summary');
       const liveButton = document.getElementById('live');
-      let candles = [], source = null, activeIndicators = [];
+      let candles = [], source = null, activeIndicators = [], strategyDecisions = [], strategies = [];
       const chart = LightweightCharts.createChart(chartElement, { height: 520, layout: { background: { color: '#ffffff' }, textColor: '#333333' }, grid: { vertLines: { color: '#eeeeee' }, horzLines: { color: '#eeeeee' } } });
       const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, { upColor: '#16803c', downColor: '#b42318', borderVisible: false, wickUpColor: '#16803c', wickDownColor: '#b42318' });
+      const markers = LightweightCharts.createSeriesMarkers(candleSeries);
       let indicatorSeries = [];
       new ResizeObserver(() => chart.resize(chartElement.clientWidth, 520)).observe(chartElement);
 
@@ -59,12 +62,30 @@
         instrument.innerHTML = body.tickerSymbols.map(symbol => '<option value="' + symbol.toLowerCase() + '">' + symbol + '</option>').join('');
       }
 
-      function draw(data, indicators = []) {
-        candles = data; activeIndicators = indicators; candleSeries.setData(data.filter(item => Number.isFinite(Number(item.openTime))).map(item => ({ time: Math.floor(item.openTime / 1000), open: Number(item.open), high: Number(item.high), low: Number(item.low), close: Number(item.close) })));
+      async function loadStrategies() {
+        const response = await fetch('/api/v1/strategy/status');
+        const body = await response.json();
+        strategies = body.strategies || [];
+        strategySelector.innerHTML = '<option value="">Manual chart</option>' + strategies.map(item => '<option value="' + item.name + '">' + item.name + ' v' + item.version + (item.enabled ? '' : ' (disabled)') + '</option>').join('');
+      }
+
+      async function applyStrategy() {
+        const selected = strategies.find(item => item.name === strategySelector.value);
+        if (!selected) return;
+        market.value = selected.marketType || market.value;
+        aggregation.value = selected.aggregation;
+        await loadInstruments();
+        instrument.value = selected.instrument;
+      }
+
+      function draw(data, indicators = [], decisions = []) {
+        candles = data; activeIndicators = indicators; strategyDecisions = decisions; candleSeries.setData(data.filter(item => Number.isFinite(Number(item.openTime))).map(item => ({ time: Math.floor(item.openTime / 1000), open: Number(item.open), high: Number(item.high), low: Number(item.low), close: Number(item.close) })));
+        markers.setMarkers(decisions.filter(decision => decision.action === 'ENTER' || decision.action === 'EXIT').map(decision => ({ time: Math.floor(decision.openTime / 1000), position: decision.action === 'ENTER' ? 'belowBar' : 'aboveBar', color: decision.action === 'ENTER' ? '#16803c' : '#b42318', shape: decision.action === 'ENTER' ? 'arrowUp' : 'arrowDown', text: decision.action + ' ' + decision.strategy })));
         indicatorSeries.forEach(series => chart.removeSeries(series)); indicatorSeries = [];
         indicators.forEach((indicator, indicatorIndex) => indicator.series.forEach(series => { const line = chart.addSeries(LightweightCharts.LineSeries, { color: ['#2563eb', '#9333ea', '#ea580c'][indicatorIndex % 3], lineWidth: 2 }); line.setData(series.values.filter(point => point.value !== null && point.value !== undefined).map(point => ({ time: Math.floor(point.openTime / 1000), value: Number(point.value) }))); indicatorSeries.push(line); }));
         chart.timeScale().fitContent();
-        summary.textContent = data.length + ' candles | latest close: ' + data[data.length - 1].close + ' | ' + new Date(data[data.length - 1].closeTime).toISOString();
+        const selected = strategies.find(item => item.name === strategySelector.value);
+        summary.textContent = data.length + ' candles | latest close: ' + data[data.length - 1].close + ' | ' + new Date(data[data.length - 1].closeTime).toISOString() + (selected ? ' | ' + selected.name + ' v' + selected.version + ' | decisions: ' + decisions.length : '');
       }
 
       async function loadChart() {
@@ -73,13 +94,20 @@
         if (indicator.value) query.set('indicators', indicator.value);
         const response = await fetch('/api/v1/binance/' + market.value + '/candles/snapshot?' + query);
         const body = await response.json(); if (!response.ok) throw new Error(body.error || 'Chart request failed');
-        draw(body.candles || body, body.indicators || []);
+        let decisions = [];
+        if (strategySelector.value) {
+          const decisionResponse = await fetch('/api/v1/strategy/decisions?strategy=' + encodeURIComponent(strategySelector.value) + '&instrument=' + encodeURIComponent(instrument.value) + '&limit=' + encodeURIComponent(limit.value));
+          const decisionBody = await decisionResponse.json(); if (!decisionResponse.ok) throw new Error(decisionBody.error || 'Decision request failed');
+          decisions = decisionBody;
+        }
+        draw(body.candles || body, body.indicators || [], decisions);
       }
 
       document.getElementById('load').addEventListener('click', () => loadChart().catch(error => { message.textContent = error.message; }));
+      strategySelector.addEventListener('change', () => applyStrategy().then(loadChart).catch(error => { message.textContent = error.message; }));
       liveButton.addEventListener('click', () => { if (source) { stopLiveUpdates(); return; } let liveUrl = '/api/v1/binance/' + market.value + '/candles/live?instrument=' + encodeURIComponent(instrument.value) + '&aggregation=' + aggregation.value + '&includeIncomplete=true'; if (indicator.value) liveUrl += '&indicators=' + encodeURIComponent(indicator.value); source = new EventSource(liveUrl); liveButton.textContent = 'Disable live updates'; source.onmessage = event => { const payload = JSON.parse(event.data); const candle = payload.candlestick; if (!candle) return; const index = candles.findIndex(item => item.openTime === candle.openTime); if (index >= 0) candles[index] = candle; else candles.push(candle); candleSeries.update({ time: Math.floor(candle.openTime / 1000), open: Number(candle.open), high: Number(candle.high), low: Number(candle.low), close: Number(candle.close) }); if (payload.indicators) payload.indicators.forEach((item, itemIndex) => item.series.forEach((series, seriesIndex) => { const line = indicatorSeries[itemIndex + seriesIndex]; if (line && series.value !== null && series.value !== undefined) line.update({ time: Math.floor(candle.openTime / 1000), value: Number(series.value) }); })); }; source.onerror = () => { message.textContent = 'Live candle connection lost.'; stopLiveUpdates(); }; });
       market.addEventListener('change', () => { stopLiveUpdates(); loadInstruments().catch(error => { message.textContent = error.message; }); });
-      loadInstruments().then(loadChart).catch(error => { message.textContent = error.message; });
+      loadStrategies().then(loadInstruments).then(loadChart).catch(error => { message.textContent = error.message; });
     </script>
   </body>
 </html>
