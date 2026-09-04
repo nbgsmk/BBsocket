@@ -33,7 +33,25 @@ function createStrategyRuntimes({ strategiesDirectory = path.join(__dirname, '..
       console.error('Strategy startup failed:', file, error.message);
     }
   }
-  return { runtimes, errors };
+  return {
+    runtimes,
+    errors,
+    reloadStrategy(file) {
+      if (typeof file !== 'string' || path.basename(file) !== file || !/\.ya?ml$/i.test(file)) {
+        throw new Error('A strategy YAML filename is required');
+      }
+      const index = runtimes.findIndex(item => item.file === file);
+      if (index < 0) throw new Error('Strategy file is not loaded: ' + file);
+      const replacement = createStrategyRuntime({ strategyFile: path.join(strategiesDirectory, file), services, dataPath });
+      const previous = runtimes[index];
+      if (previous.engine) previous.engine.stop();
+      if (previous.repository) previous.repository.close();
+      runtimes[index] = { ...replacement, file };
+      const errorIndex = errors.findIndex(item => item.file === file);
+      if (errorIndex >= 0) errors.splice(errorIndex, 1);
+      return runtimes[index];
+    }
+  };
 }
 
 module.exports = { createStrategyRuntime, createStrategyRuntimes, defaultStrategiesDirectory: path.join(__dirname, '..', '..', 'strategies') };

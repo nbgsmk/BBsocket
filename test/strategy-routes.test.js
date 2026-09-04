@@ -3,9 +3,9 @@ const test = require('node:test');
 const createStrategyRoutes = require('../routes/api/v1/strategy');
 const createPaperRoutes = require('../routes/api/v1/paper');
 
-function call(router, url, query = {}) {
+function call(router, url, query = {}, method = 'GET', body) {
   return new Promise((resolve, reject) => {
-    const req = { method: 'GET', url, originalUrl: url, query };
+    const req = { method, url, originalUrl: url, query, body };
     const res = {
       statusCode: 200,
       status(code) { this.statusCode = code; return this; },
@@ -50,4 +50,17 @@ test('filters paper positions and trades by strategy', async () => {
   const response = await call(createPaperRoutes(runtime()), '/positions', { strategy: 'trend' });
   assert.equal(response.body.length, 1);
   assert.equal(response.body[0].strategy, 'trend');
+});
+
+test('reloads a selected strategy', async () => {
+  const fixture = runtime();
+  fixture.reloadStrategy = file => {
+    assert.equal(file, 'a.yaml');
+    fixture.runtimes[0].strategy.version = 2;
+    return fixture.runtimes[0];
+  };
+  const response = await call(createStrategyRoutes(fixture), '/reload', {}, 'POST', { file: 'a.yaml' });
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.file, 'a.yaml');
+  assert.equal(response.body.version, 2);
 });

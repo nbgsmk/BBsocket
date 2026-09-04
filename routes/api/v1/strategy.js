@@ -9,6 +9,19 @@ function limitValue(value) {
 
 module.exports = function createStrategyRoutes(runtime) {
   const router = express.Router();
+  router.post('/reload', (req, res) => {
+    try {
+      const result = runtime.reloadStrategy(req.body && req.body.file);
+      return res.json({
+        file: result.file,
+        name: result.strategy.name,
+        version: result.strategy.version,
+        enabled: Boolean(result.strategy.enabled && result.engine)
+      });
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+  });
   router.get('/status', (req, res) => {
     return res.json({ strategies: runtime.runtimes.map(item => ({ file: item.file, enabled: Boolean(item.strategy.enabled && item.engine), name: item.strategy.name, version: item.strategy.version, marketType: item.service && item.service.marketType || null, instrument: item.strategy.instruments[0], aggregation: item.strategy.aggregation, indicators: item.strategy.indicators, lastDecisionTime: item.engine && item.engine.decisions.length ? item.engine.decisions[item.engine.decisions.length - 1].openTime : null })), errors: runtime.errors || [] });
   });

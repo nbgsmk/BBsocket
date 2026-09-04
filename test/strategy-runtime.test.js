@@ -51,3 +51,19 @@ test('rejects a strategy containing multiple instruments', () => {
   assert.match(runtime.errors[0].error, /exactly one instrument/);
   fs.rmSync(directory, { recursive: true, force: true });
 });
+
+test('reloads a strategy without restarting its service', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'strategies-'));
+  const dataDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'strategy-data-'));
+  const file = path.join(directory, 'btc.yaml');
+  fs.writeFileSync(file, valid('btc-trend', 'btcusdt'));
+  const runtime = createStrategyRuntimes({ strategiesDirectory: directory, services: { usdM: service() }, dataPath: path.join(dataDirectory, 'strategy.sqlite') });
+  fs.writeFileSync(file, valid('btc-trend-updated', 'btcusdt'));
+  const reloaded = runtime.reloadStrategy('btc.yaml');
+  assert.equal(reloaded.strategy.name, 'btc-trend-updated');
+  assert.equal(runtime.runtimes[0], reloaded);
+  if (reloaded.engine) reloaded.engine.stop();
+  if (reloaded.repository) reloaded.repository.close();
+  fs.rmSync(directory, { recursive: true, force: true });
+  fs.rmSync(dataDirectory, { recursive: true, force: true });
+});

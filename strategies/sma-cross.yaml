@@ -5,7 +5,7 @@ instruments:
   - btcusdt
 aggregation: 5m
 indicators:
-  - { name: smaFast, indicator: "sma:2" }
+  - { name: smaFast, indicator: "sma:7" }
   - { name: smaSlow, indicator: "sma:10" }
   - { name: rsi, indicator: "rsi:14" }
 positionEntry:

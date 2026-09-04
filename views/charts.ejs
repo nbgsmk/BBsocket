@@ -31,6 +31,7 @@
       <label>Limit <input id="limit" type="number" min="1" max="1000" value="300" /></label>
       <label>Indicator <select id="indicator"><option value="">None</option><option value="sma:20">SMA 20</option><option value="ema:20">EMA 20</option><option value="rsi:14">RSI 14</option><option value="volumeSma:20">Volume SMA 20</option><option value="tradeCount">Trades</option><option value="tradeCountSma:20">Trades SMA 20</option><option value="tradeCountEma:20">Trades EMA 20</option></select></label>
       <button type="button" id="load">Load chart</button>
+      <button type="button" id="reload-strategy" disabled>Reload strategy</button>
       <button type="button" id="live">Enable live updates</button>
       <p id="message" role="alert"></p>
       <div id="chart"><div id="pane-dividers"></div><div id="pane-labels"></div><button type="button" id="reset-price-scale" title="Auto (fit data to screen)" aria-label="Auto (fit data to screen)">A</button></div>
@@ -48,6 +49,7 @@
       const message = document.getElementById('message');
       const summary = document.getElementById('summary');
       const liveButton = document.getElementById('live');
+      const reloadStrategyButton = document.getElementById('reload-strategy');
       const resetPriceScaleButton = document.getElementById('reset-price-scale');
       const paneLabelsElement = document.getElementById('pane-labels');
       const paneDividersElement = document.getElementById('pane-dividers');
@@ -146,6 +148,7 @@
         const body = await response.json();
         strategies = body.strategies || [];
         strategySelector.innerHTML = '<option value="">Manual chart</option>' + strategies.map(item => '<option value="' + item.name + '">' + item.name + ' v' + item.version + (item.enabled ? '' : ' (disabled)') + '</option>').join('');
+        reloadStrategyButton.disabled = !strategySelector.value;
       }
 
       async function applyStrategy() {
@@ -348,6 +351,25 @@
 
       document.getElementById('load').addEventListener('click', () => loadChart().catch(error => { message.textContent = error.message; }));
       strategySelector.addEventListener('change', () => applyStrategy().then(loadChart).catch(error => { message.textContent = error.message; }));
+      strategySelector.addEventListener('change', () => { reloadStrategyButton.disabled = !strategySelector.value; });
+      reloadStrategyButton.addEventListener('click', async () => {
+        const selected = strategies.find(item => item.name === strategySelector.value);
+        if (!selected) return;
+        reloadStrategyButton.disabled = true;
+        try {
+          const response = await fetch('/api/v1/strategy/reload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file: selected.file }) });
+          const body = await response.json();
+          if (!response.ok) throw new Error(body.error || 'Strategy reload failed');
+          await loadStrategies();
+          strategySelector.value = body.name;
+          await loadChart();
+          message.textContent = 'Strategy reloaded: ' + body.name + ' v' + body.version;
+        } catch (error) {
+          message.textContent = error.message;
+        } finally {
+          reloadStrategyButton.disabled = !strategySelector.value;
+        }
+      });
       liveButton.addEventListener('click', () => { if (source) { stopLiveUpdates(); return; } let liveUrl = '/api/v1/binance/' + market.value + '/candles/live?instrument=' + encodeURIComponent(instrument.value) + '&aggregation=' + aggregation.value + '&includeIncomplete=true'; const selected = strategies.find(item => item.name === strategySelector.value); if (selected && selected.indicators.length) liveUrl += '&indicators=' + encodeURIComponent(selected.indicators.join(',')); else if (indicator.value) liveUrl += '&indicators=' + encodeURIComponent(indicator.value); source = new EventSource(liveUrl); liveButton.textContent = 'Disable live updates'; source.onmessage = event => { const payload = JSON.parse(event.data); const candle = payload.candlestick; if (!candle) return; const index = candles.findIndex(item => item.openTime === candle.openTime); if (index >= 0) candles[index] = candle; else candles.push(candle); const time = Math.floor(candle.openTime / 1000); candleSeries.update({ time, open: Number(candle.open), high: Number(candle.high), low: Number(candle.low), close: Number(candle.close) }); if (volumeSeries && Number.isFinite(Number(candle.volume))) volumeSeries.update({ time, value: Number(candle.volume), color: Number(candle.close) >= Number(candle.open) ? '#16a34a' : '#dc2626' }); if (payload.indicators) payload.indicators.forEach(item => item.series.forEach(series => { const line = seriesByKey.get(indicatorKey(item, series.name)); if (line && series.value !== null && series.value !== undefined) line.update({ time, value: Number(series.value) }); })); }; source.onerror = () => { message.textContent = 'Live candle connection lost.'; stopLiveUpdates(); }; });
       market.addEventListener('change', () => { stopLiveUpdates(); loadInstruments().catch(error => { message.textContent = error.message; }); });
       loadStrategies().then(loadInstruments).then(loadChart).catch(error => { message.textContent = error.message; });

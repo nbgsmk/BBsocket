@@ -6,7 +6,9 @@ test('chart page contains data controls and live chart integration', () => {
   const template = fs.readFileSync(require.resolve('../views/charts.ejs'), 'utf8');
   assert.match(template, /id="chart"/);
   assert.match(template, /id="reset-price-scale"/);
-  assert.match(template, /rightPriceScale: \{ autoScale: true, scaleMargins: \{ top: 0\.1, bottom: 0\.1 \} \}/);
+  assert.match(template, /id="reload-strategy"/);
+  assert.match(template, /api\/v1\/strategy\/reload/);
+  assert.match(template, /rightPriceScale: \{ autoScale: true, scaleMargins: \{ top: 0\.07, bottom: 0\.05 \} \}/);
   assert.match(template, /timeScale: \{ rightOffset: 3 \}/);
   assert.match(template, /function resetPriceScale/);
   assert.match(template, /function positionResetPriceScaleButton/);
