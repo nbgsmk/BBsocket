@@ -11,6 +11,7 @@
       button { cursor: pointer; margin: 0 .35rem .35rem 0; padding: .35rem .65rem; }
       label { margin-right: .5rem; }
       #chart { position: relative; border: 1px solid #bbb; height: 720px; width: 100%; }
+      #reset-price-scale { position: absolute; right: 2px; z-index: 30; margin: 0; padding: 2px 5px; border: 1px solid #94a3b8; border-radius: 3px; background: rgba(255, 255, 255, .9); color: #334155; font-size: 11px; line-height: 1.2; }
       #pane-labels { position: absolute; inset: 0; z-index: 20; pointer-events: none; overflow: hidden; }
       #pane-dividers { position: absolute; inset: 0; z-index: 15; pointer-events: none; overflow: hidden; }
       .chart-pane-divider { position: absolute; left: 0; height: 1px; background: #475569; box-shadow: 0 1px 2px rgba(15, 23, 42, .25); }
@@ -32,7 +33,7 @@
       <button type="button" id="load">Load chart</button>
       <button type="button" id="live">Enable live updates</button>
       <p id="message" role="alert"></p>
-      <div id="chart"><div id="pane-dividers"></div><div id="pane-labels"></div></div>
+      <div id="chart"><div id="pane-dividers"></div><div id="pane-labels"></div><button type="button" id="reset-price-scale" title="Auto (fit data to screen)" aria-label="Auto (fit data to screen)">A</button></div>
       <p id="summary">Load a chart to begin.</p>
     </main>
     <script src="/vendor/lightweight-charts.standalone.production.js"></script>
@@ -47,11 +48,12 @@
       const message = document.getElementById('message');
       const summary = document.getElementById('summary');
       const liveButton = document.getElementById('live');
+      const resetPriceScaleButton = document.getElementById('reset-price-scale');
       const paneLabelsElement = document.getElementById('pane-labels');
       const paneDividersElement = document.getElementById('pane-dividers');
       let candles = [], source = null, activeIndicators = [], strategyDecisions = [], strategies = [];
       const seriesByKey = new Map();
-      const chart = LightweightCharts.createChart(chartElement, { height: 720, layout: { background: { color: '#ffffff' }, textColor: '#333333' }, grid: { vertLines: { color: '#eeeeee' }, horzLines: { color: '#eeeeee' } }, panes: { enableResize: true, separatorColor: '#64748b', separatorHoverColor: '#334155' } });
+      const chart = LightweightCharts.createChart(chartElement, { height: 720, layout: { background: { color: '#ffffff' }, textColor: '#333333' }, grid: { vertLines: { color: '#eeeeee' }, horzLines: { color: '#eeeeee' } }, rightPriceScale: { autoScale: true, scaleMargins: { top: 0.07, bottom: 0.05 } }, leftPriceScale: { autoScale: true }, timeScale: { rightOffset: 3 }, panes: { enableResize: true, separatorColor: '#64748b', separatorHoverColor: '#334155' } });
       const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, { upColor: '#16803c', downColor: '#b42318', borderVisible: false, wickUpColor: '#16803c', wickDownColor: '#b42318' });
       const markers = LightweightCharts.createSeriesMarkers(candleSeries);
       let indicatorSeries = [];
@@ -112,11 +114,20 @@
         return true;
       }
 
+      function resetPriceScale() {
+        const pane = chart.panes()[0];
+        if (!pane) return;
+        const scale = pane.priceScale('right');
+        if (typeof scale.setAutoScale === 'function') scale.setAutoScale(true);
+        else scale.applyOptions({ autoScale: true });
+      }
+
       chartElement.addEventListener('wheel', event => {
         if (!scalePriceFromWheel(event)) return;
         event.preventDefault();
         event.stopPropagation();
       }, { capture: true, passive: false });
+      resetPriceScaleButton.addEventListener('click', resetPriceScale);
 
       function stopLiveUpdates() {
         if (source) source.close();
@@ -178,6 +189,7 @@
         if (paneLabelPositionFrame !== null) cancelAnimationFrame(paneLabelPositionFrame);
         paneLabelPositionFrame = requestAnimationFrame(() => {
           paneLabelPositionFrame = null;
+          positionResetPriceScaleButton();
           positionPaneLabels();
           positionPaneDividers();
         });
@@ -190,6 +202,15 @@
           paneIndicators.forEach((paneItems, paneIndex) => addPaneLabel(paneIndex, paneItems));
           schedulePaneLabelPosition();
         });
+      }
+
+      function positionResetPriceScaleButton() {
+        const pane = chart.panes()[0];
+        const element = pane && pane.getHTMLElement();
+        if (!element) return;
+        const chartRect = chartElement.getBoundingClientRect();
+        const paneRect = element.getBoundingClientRect();
+        resetPriceScaleButton.style.top = Math.max(0, paneRect.bottom - chartRect.top - resetPriceScaleButton.offsetHeight - 4) + 'px';
       }
 
       function positionPaneLabels() {
@@ -302,6 +323,7 @@
           schedulePaneLabelPosition();
         });
         chart.timeScale().fitContent();
+        resetPriceScale();
         schedulePaneLabelCreation(paneIndicators);
         const selected = strategies.find(item => item.name === strategySelector.value);
         summary.textContent = data.length + ' candles | latest close: ' + data[data.length - 1].close + ' | ' + new Date(data[data.length - 1].closeTime).toISOString() + (selected ? ' | ' + selected.name + ' v' + selected.version + ' | decisions: ' + decisions.length : '');

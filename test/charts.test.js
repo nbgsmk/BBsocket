@@ -5,6 +5,13 @@ const test = require('node:test');
 test('chart page contains data controls and live chart integration', () => {
   const template = fs.readFileSync(require.resolve('../views/charts.ejs'), 'utf8');
   assert.match(template, /id="chart"/);
+  assert.match(template, /id="reset-price-scale"/);
+  assert.match(template, /rightPriceScale: \{ autoScale: true, scaleMargins: \{ top: 0\.1, bottom: 0\.1 \} \}/);
+  assert.match(template, /timeScale: \{ rightOffset: 3 \}/);
+  assert.match(template, /function resetPriceScale/);
+  assert.match(template, /function positionResetPriceScaleButton/);
+  assert.match(template, /paneRect\.bottom/);
+  assert.match(template, /setAutoScale\(true\)/);
   assert.match(template, /candles\/snapshot/);
   assert.match(template, /candles\/live/);
   assert.match(template, /payload\.candlestick/);
