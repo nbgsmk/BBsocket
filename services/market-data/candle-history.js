@@ -19,6 +19,10 @@ class CandleHistory extends EventEmitter {
     if (!this.histories[symbol]) this.histories[symbol] = [];
   }
 
+  restore(candles) {
+    candles.forEach(candle => this.add(candle));
+  }
+
   add(candle) {
     const key = candle.instrument || candle.symbol;
     this.ensureSymbol(key);

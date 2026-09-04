@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 const YAML = require('yaml');
 const ExchangeService = require('../exchange-service');
 const CandleHistory = require('../../market-data/candle-history');
+const CandleRepository = require('../../market-data/candle-repository');
 
 const CONFIG_PATH = path.join(__dirname, '..', '..', '..', 'config', 'binancesocket.yaml');
 const INTERVALS = new Set(['1s', '1m', '2m', '3m', '5m', '10m', '15m', '20m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '2d', '3d', '4d', '5d', '1w', '1M']);
@@ -107,11 +108,22 @@ class BinanceSocket extends ExchangeService {
     if (!MARKET_TYPES.has(this.marketType)) throw new Error('Unsupported Binance market type: ' + this.marketType);
     this.configPath = options.configPath || CONFIG_PATH;
     this.config = readConfig(this.configPath, this.marketType);
+    this.candleDataPath = options.candleDataPath || (options.configPath
+      ? path.join(path.dirname(this.configPath), 'candles-' + this.marketType + '.sqlite')
+      : path.join(__dirname, '..', '..', '..', 'data', 'candles-' + this.marketType + '.sqlite'));
+    this.candleRepository = options.candleRepository || new CandleRepository(this.candleDataPath);
     this.WebSocket = options.WebSocket || WebSocket;
     this.fetch = options.fetch || global.fetch;
     if (typeof this.fetch !== 'function') throw new Error('A fetch implementation is required');
     this.socket = null;
     this.history = new CandleHistory(this.config.maxCandlesInMemory, this.config.exchangeCandlestickStreamInterval, this.config.tickerSymbols.map(symbolForStream));
+    this.history.restore(this.candleRepository.getCandles(this.config.tickerSymbols.map(symbolForStream), this.config.maxCandlesInMemory));
+    this.candlePersistenceSubscription = this.history.subscribe(({ eventSource, ...candle }) => {
+      if (!candle.candlestickIsClosed) return;
+      const instrument = candle.instrument || candle.symbol;
+      this.candleRepository.save(candle);
+      this.candleRepository.trim(instrument, this.config.maxCandlesInMemory);
+    });
     this.reconnectTimer = null;
     this.reconnectDelay = 1000;
     this.initializationPromise = null;
@@ -267,6 +279,12 @@ class BinanceSocket extends ExchangeService {
       this.socket = null;
       socket.close();
     }
+  }
+
+  close() {
+    if (this.socket) this.disconnect();
+    if (this.candlePersistenceSubscription) this.candlePersistenceSubscription();
+    if (this.candleRepository) this.candleRepository.close();
   }
 
   persistConfig() {
